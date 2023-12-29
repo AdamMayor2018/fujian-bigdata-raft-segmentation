@@ -6,6 +6,7 @@
 # @Description:
 import os.path
 import cv2
+import torch
 from PIL import Image, ImageFile
 import rasterio
 from rasterio.windows import Window
@@ -14,7 +15,8 @@ import numpy as np
 from os.path import join as opj
 from raft_baseline.config.conf_loader import YamlConfigLoader
 import glob
-
+from tqdm import tqdm
+import torch.nn.functional as F
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 Image.MAX_IMAGE_PIXELS = None
 
@@ -82,10 +84,11 @@ class HuBMAPDataset(Dataset):
         if os.path.exists(filename):
             path = filename
         else:
-            path = opj(self.conf_loader.attempt_load_param("train_dir"), filename + '.tiff')
+            path = opj(self.conf_loader.attempt_load_param("raw_train_dir"), filename + '.tiff')
         mask_path = path.replace("img", "mask")
         self.image = rasterio.open(path)
         self.mask = rasterio.open(mask_path)
+
         if self.image.count != 3:
             subdatasets = self.image.subdatasets
             self.layers = []
@@ -100,6 +103,15 @@ class HuBMAPDataset(Dataset):
         self.pad_w = self.sz - self.w % self.sz  # add to whole slide
         self.num_h = (self.h + self.pad_h) // self.sz
         self.num_w = (self.w + self.pad_w) // self.sz
+        self.image = torch.from_numpy(self.image.read([1, 2, 3])).float()
+        self.mask = torch.from_numpy(self.mask.read([1])).float()
+        #pad image and mask
+        pad_left = self.pad_w // 2
+        pad_right = self.pad_w - pad_left
+        pad_top = self.pad_h // 2
+        pad_bottom = self.pad_h - pad_top
+        self.image = F.pad(self.image, (pad_left, pad_right, pad_top, pad_bottom), mode='reflect').numpy().astype(np.uint8)
+        self.mask = F.pad(self.mask, (pad_left, pad_right, pad_top, pad_bottom), mode='reflect').numpy().astype(np.uint8)
 
         if self.h % self.sz < self.shift_h:
             self.num_h -= 1
@@ -140,13 +152,28 @@ class HuBMAPDataset(Dataset):
 
 if __name__ == '__main__':
     conf_loader = YamlConfigLoader("../config/raft_baseline_config.yaml")
-    raw_dir = conf_loader.attempt_load_param("raw_dir")
-    print(raw_dir)
-    img_paths = glob.glob(opj(raw_dir, "mask*.tif"))
-    print(img_paths)
-    for i_path in img_paths:
-        split_tiffs(i_path, conf_loader)
-        # dataset = HuBMAPDataset(i_path, conf_loader)
-        # for _ in dataset:
-        #     pass
-    # dataset = HuBMAPDataset()
+    raw_train_dir = conf_loader.attempt_load_param("raw_train_dir")
+    train_dir = conf_loader.attempt_load_param("train_dir")
+    raw_val_dir = conf_loader.attempt_load_param("raw_val_dir")
+    val_dir = conf_loader.attempt_load_param("val_dir")
+    train_raw_img_paths = glob.glob(opj(raw_train_dir, "train_img*.tif"))
+    val_raw_img_paths = glob.glob(opj(raw_val_dir, "val_img*.tif"))
+    print(train_raw_img_paths)
+    for j, i_path in enumerate(train_raw_img_paths):
+        #split_tiffs(i_path, conf_loader)
+        dataset = HuBMAPDataset(i_path, conf_loader)
+        for i, pair in tqdm(enumerate(dataset)):
+            if i == 804:
+                print("xxx")
+            print(pair)
+            image = pair["img"]
+            mask = pair["mask"]
+            # 纯黑的图去掉
+            if mask.sum() == 0:
+                continue
+            print(image.shape, mask.shape)
+            image = Image.fromarray(image)
+            mask = Image.fromarray(mask.squeeze(-1))
+            image.save(opj(f"{train_dir}", "images", f"train_{j}_{i}.jpg"))
+            mask.save(opj(f"{train_dir}", "labels", f"train_{j}_{i}.jpg"))
+
