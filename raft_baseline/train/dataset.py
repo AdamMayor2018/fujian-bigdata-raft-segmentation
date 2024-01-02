@@ -26,7 +26,7 @@ class RaftDataset(Dataset):
             if os.path.exists(label_path):
                 self.pairs["images"].append(path)
                 self.pairs["labels"].append(path)
-        self.transform = aug.get_train_transform() if self.mode == "train" else aug.get_val_transform()
+        self.transform = aug.get_transforms_train() if self.mode == "train" else aug.get_transforms_valid()
         self.width = self.conf_loader.attempt_load_param("train_width") \
             if self.mode == "train" else self.conf_loader.attempt_load_param("val_width")
         self.height = self.conf_loader.attempt_load_param("train_height") \

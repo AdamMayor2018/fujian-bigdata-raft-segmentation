@@ -7,22 +7,22 @@ from albumentations import (Compose, HorizontalFlip, VerticalFlip, Rotate, Rando
                             GaussianBlur, CLAHE,
                             Cutout, CoarseDropout, GaussNoise, ChannelShuffle, ToGray, OpticalDistortion,
                             Normalize, OneOf, NoOp)
-from albumentations.pytorch import ToTensor
+from albumentations.pytorch import ToTensorV2
 from raft_baseline.config.conf_loader import YamlConfigLoader
-
-
 
 MEAN = np.array([0.485, 0.456, 0.406])
 STD = np.array([0.229, 0.224, 0.225])
+
 
 class AugmentationTool:
     def __init__(self, conf_loader: YamlConfigLoader):
         self.MEAN = np.array([0.485, 0.456, 0.406])
         self.STD = np.array([0.229, 0.224, 0.225])
+
     def get_transforms_train(self):
         transform_train = Compose([
             # Basic
-            #RandomRotate90(p=1),
+            # RandomRotate90(p=1),
             HorizontalFlip(p=0.5),
 
             # Morphology
@@ -45,19 +45,17 @@ class AugmentationTool:
 
             Normalize(mean=(MEAN[0], MEAN[1], MEAN[2]),
                       std=(STD[0], STD[1], STD[2])),
-            ToTensor(),
+            ToTensorV2(),
         ])
         return transform_train
-
 
     def get_transforms_valid(self):
         transform_valid = Compose([
             Normalize(mean=(MEAN[0], MEAN[1], MEAN[2]),
                       std=(STD[0], STD[1], STD[2])),
-            ToTensor(),
+            ToTensorV2(),
         ])
         return transform_valid
-
 
     def denormalize(z, mean=MEAN.reshape(-1, 1, 1), std=STD.reshape(-1, 1, 1)):
         return std * z + mean
