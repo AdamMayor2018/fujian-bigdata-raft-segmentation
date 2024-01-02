@@ -9,9 +9,9 @@ from torch import nn, optim
 import torch.nn.functional as F
 import sys
 
-package_dir = "./backbones-master"
-sys.path.insert(0, package_dir)
-from raft_baseline.model_plugin.backbones import pretrainedmodels
+# package_dir = "./backbones-master"
+# sys.path.insert(0, package_dir)
+from raft_baseline.model_plugin.backbones import *
 
 
 def conv3x3(in_channel, out_channel):  # not change resolusion
@@ -136,9 +136,9 @@ class UNET_SERESNEXT101(nn.Module):
         # encoder
         model_name = 'se_resnext101_32x4d'
         if load_weights:
-            seresnext101 = pretrainedmodels.__dict__[model_name](pretrained='imagenet')
+            seresnext101 = backbones.__dict__[model_name](pretrained='imagenet')
         else:
-            seresnext101 = pretrainedmodels.__dict__[model_name](pretrained=None)
+            seresnext101 = backbones.__dict__[model_name](pretrained=None)
 
         self.encoder0 = nn.Sequential(
             seresnext101.layer0.conv1,  # (*,3,h,w)->(*,64,h/2,w/2)
@@ -259,7 +259,7 @@ class UNET_SERESNEXT101(nn.Module):
                 return logits
 
 
-def build_model(model_name, resolution, deepsupervision, clfhead, clf_threshold, load_weights):
+def build_model(model_name, resolution, deep_supervision, clf_head, clf_threshold, load_weights):
     if model_name == 'seresnext101':
-        model = UNET_SERESNEXT101(resolution, deepsupervision, clfhead, clf_threshold, load_weights)
+        model = UNET_SERESNEXT101(resolution, deep_supervision, clf_head, clf_threshold, load_weights)
     return model

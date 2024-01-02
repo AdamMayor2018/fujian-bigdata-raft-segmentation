@@ -19,6 +19,14 @@ val_width: 512 # 预测宽度尺寸 预测预处理的时候会被resize到这�
 val_height: 512 #预测高度尺寸 预测预处理的的时候会被resize到这一高度
 
 #训练相关
+backbone_name: 'seresnext101'
+pretrained: True
+pretrained_path: None
+model_params:
+  deep_supervision: False
+  clf_head: True
+  clf_threshold: None
+  load_backbone_weights: True
 device: 'cuda:0'
 batch_size: 16
 val_batch_size: 1
