@@ -24,7 +24,7 @@ _model_sha256 = {name: checksum for checksum, name in [
 
 def short_hash(name):
     if name not in _model_sha256:
-        raise ValueError('Pretrained model for {name} is not available.'.format(name=name))
+        raise ValueError('Pretrained models for {name} is not available.'.format(name=name))
     return _model_sha256[name][:8]
 
 
@@ -410,7 +410,7 @@ class ResNet(nn.Module):
 
 def short_hash(name):
     if name not in _model_sha256:
-        raise ValueError('Pretrained model for {name} is not available.'.format(name=name))
+        raise ValueError('Pretrained models for {name} is not available.'.format(name=name))
     return _model_sha256[name][:8]
 
 

@@ -141,7 +141,7 @@ for epoch in range(args.max_epoch):
             filename = os.path.join(log_dir, str(epoch) + '_checkpoint-best.pth')
             torch.save(state, filename)
             best_train_acc = val_acc
-            tf.logging.info('Save model successfully to "%s"!' % (log_dir + 'net_params.pkl'))
+            tf.logging.info('Save models successfully to "%s"!' % (log_dir + 'net_params.pkl'))
         tf.logging.info("After 1 epoch：acc_val:{:.4f},loss_val:{:.4f}".format(acc_val_sigma / (len(val_loader)),
                                                                               loss_val_sigma / (len(val_loader))))
 
