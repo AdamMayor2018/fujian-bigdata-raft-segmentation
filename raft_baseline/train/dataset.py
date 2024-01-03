@@ -25,7 +25,7 @@ class RaftDataset(Dataset):
             label_path = opj(self.data_dir, "labels", img_name)
             if os.path.exists(label_path):
                 self.pairs["images"].append(path)
-                self.pairs["labels"].append(path)
+                self.pairs["labels"].append(label_path)
         self.transform = aug.get_transforms_train() if self.mode == "train" else aug.get_transforms_valid()
         self.width = self.conf_loader.attempt_load_param("train_width") \
             if self.mode == "train" else self.conf_loader.attempt_load_param("val_width")
@@ -35,7 +35,7 @@ class RaftDataset(Dataset):
     def __getitem__(self, idx):
         img_path = self.pairs["images"][idx]
         label_path = self.pairs["labels"][idx]
-        print(img_path, label_path)
+        #print(img_path, label_path)
         img = cv2.imread(img_path)
         mask = cv2.imread(label_path, cv2.IMREAD_GRAYSCALE)
         h, w, c = img.shape
@@ -43,6 +43,8 @@ class RaftDataset(Dataset):
         if h != self.height or w != self.width:
             img = cv2.resize(img, (self.width, self.height), interpolation=cv2.INTER_AREA)
             mask = cv2.resize(mask, (self.width, self.height), interpolation=cv2.INTER_AREA)
+        # 原图给二值化的1对应85
+        mask[mask != 0] = 1
         if self.conf_loader.attempt_load_param("transform") and self.transform:
             augmented = self.transform(image=img.astype(np.uint8),
                                        mask=mask.astype(np.uint8))

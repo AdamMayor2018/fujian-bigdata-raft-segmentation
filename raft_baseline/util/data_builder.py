@@ -167,6 +167,7 @@ if __name__ == '__main__':
             #print(image.shape, mask.shape)
             image = Image.fromarray(image)
             mask = Image.fromarray(mask.squeeze(-1))
+            mask = mask.convert("L")
             image.save(opj(f"{train_dir}", "images", f"train_{j}_{i}.jpg"))
             mask.save(opj(f"{train_dir}", "labels", f"train_{j}_{i}.jpg"))
 

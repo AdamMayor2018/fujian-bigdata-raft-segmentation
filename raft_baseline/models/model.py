@@ -136,9 +136,9 @@ class UNET_SERESNEXT101(nn.Module):
         # encoder
         model_name = 'se_resnext101_32x4d'
         if load_weights:
-            seresnext101 = backbones.__dict__[model_name](pretrained='imagenet')
+            seresnext101 = globals()[model_name](pretrained='imagenet')
         else:
-            seresnext101 = backbones.__dict__[model_name](pretrained=None)
+            seresnext101 = globals()[model_name](pretrained=None)
 
         self.encoder0 = nn.Sequential(
             seresnext101.layer0.conv1,  # (*,3,h,w)->(*,64,h/2,w/2)
