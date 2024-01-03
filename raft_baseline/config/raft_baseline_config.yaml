@@ -20,7 +20,7 @@ val_height: 512 #预测高度尺寸 预测预处理的的时候会被resize到�
 
 #训练相关
 device: 'cuda:6'
-train_batch_size: 4
+train_batch_size: 8
 val_batch_size: 1
 num_epochs: 20
 backbone_name: 'seresnext101'
@@ -28,7 +28,7 @@ pretrained: False
 pretrained_path: None
 model_params:
   deep_supervision: False
-  clf_head: True
+  clf_head: False
   clf_threshold: None
   load_backbone_weights: True
 optim_params:
