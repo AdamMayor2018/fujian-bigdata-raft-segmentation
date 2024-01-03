@@ -32,9 +32,9 @@ model_params:
   clf_threshold: None
   load_backbone_weights: True
 optim_params:
-  lr: 0.00003
+  lr: 0.00001
   betas:  (0.9, 0.999)
-  weight_decay: 0.0005
+  weight_decay: 0.001
 lr_scheduler_name: 'ReduceLROnPlateau'
 sched_params:
   'factor': 0.8
