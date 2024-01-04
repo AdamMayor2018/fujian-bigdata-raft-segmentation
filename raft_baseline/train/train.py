@@ -15,7 +15,6 @@ from torch import nn, optim
 from sklearn.metrics import f1_score
 import logging
 import pandas as pd
-import shutil
 
 logger = logging.getLogger('train')
 logger.setLevel("DEBUG")
@@ -89,6 +88,7 @@ if __name__ == '__main__':
     best_scores[:, 1] += 1e6
     result_dict = {}
 
+
     # train
     record_df = pd.DataFrame(columns=log_cols, dtype=object)
     for epoch in range(1, conf_loader.attempt_load_param("num_epochs") + 1):
@@ -131,6 +131,7 @@ if __name__ == '__main__':
                 optimizer.step()
                 optimizer.zero_grad()
                 train_epoch_loss += train_batch_loss.item() * train_batch
+                logits = torch.sigmoid(logits)
                 logits[logits >= 0.5] = 1
                 logits[logits <= 0.5] = 0
                 batch_train_f1_score = f1_score(targets.flatten().tolist(), logits.flatten().tolist())
@@ -167,7 +168,9 @@ if __name__ == '__main__':
                             logits = model(inputs.to(device, torch.float32, non_blocking=True))
                     y_true = targets.to(device, torch.float32, non_blocking=True)
                     val_batch_loss = criterion(logits.squeeze(1), y_true).item() * val_batch
+
                     valid_epoch_loss += val_batch_loss
+                    logits = torch.sigmoid(logits)
                     logits[logits >= 0.5] = 1
                     logits[logits <= 0.5] = 0
                     batch_val_f1_score = f1_score(targets.flatten().tolist(), logits.flatten().tolist())
