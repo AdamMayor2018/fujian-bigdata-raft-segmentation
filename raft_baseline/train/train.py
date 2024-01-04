@@ -179,6 +179,7 @@ if __name__ == '__main__':
                 # del data, loss, logits, y_true, inputs, targets
                 # torch.cuda.empty_cache()
                 # gc.collect()
+
             avg_val_loss = valid_epoch_loss / len(valid_dataset)
             scheduler.step(valid_epoch_loss)
             valid_epoch_avg_f1_score = sum(valid_epoch_f1_scores) / len(valid_epoch_f1_scores)
