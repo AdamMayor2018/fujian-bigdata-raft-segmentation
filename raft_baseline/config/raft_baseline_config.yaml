@@ -20,7 +20,7 @@ val_height: 512 #预测高度尺寸 预测预处理的的时候会被resize到�
 
 #训练相关
 device: 'cuda:6'
-train_batch_size: 8
+train_batch_size: 16
 val_batch_size: 1
 num_epochs: 20
 backbone_name: 'seresnext101'
@@ -41,3 +41,6 @@ sched_params:
   'patience': 5
   'min_lr': 1e-5
   'verbose': True
+result_csv_path: '/data/cx/datasets/fujian_gis_data/'
+weight_save_path: '/data/cx/competition/fujian_bigdata_GIS_competition/raft_baseline/weights'
+save_best_num: 3 #保留val-loss最低的k个模型
