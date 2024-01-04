@@ -139,8 +139,8 @@ if __name__ == '__main__':
                 # logger.info(f"batch f1 score: {batch_train_f1_score}")
 
             avg_train_loss = train_epoch_loss / len(train_dataset)
-            train_epoch_f1_score = sum(train_epoch_f1_scores) / len(train_epoch_f1_scores)
-            logger.info(f"epoch {epoch}, train loss: {avg_train_loss}, train F1_score： {train_epoch_f1_score}")
+            train_epoch_avg_f1_score = sum(train_epoch_f1_scores) / len(train_epoch_f1_scores)
+            logger.info(f"epoch {epoch}, train loss: {avg_train_loss}, train F1_score： {train_epoch_avg_f1_score}")
             # validation
             # del data, loss, logits, y_true, inputs, targets
             model.eval()
@@ -181,8 +181,8 @@ if __name__ == '__main__':
                 # gc.collect()
             avg_val_loss = valid_epoch_loss / len(valid_dataset)
             scheduler.step(valid_epoch_loss)
-            valid_epoch_f1_Score = sum(valid_epoch_f1_scores) / len(valid_epoch_f1_scores)
-            logger.info(f"epoch {epoch}, val loss: {avg_val_loss}, valid F1_score： {valid_epoch_f1_Score}")
+            valid_epoch_avg_f1_score = sum(valid_epoch_f1_scores) / len(valid_epoch_f1_scores)
+            logger.info(f"epoch {epoch}, val loss: {avg_val_loss}, valid F1_score： {valid_epoch_avg_f1_score}")
 
             # save topk val loss model weights
             save_dir = conf_loader.attempt_load_param("weight_save_path")
@@ -190,7 +190,7 @@ if __name__ == '__main__':
                 os.mkdir(save_dir)
             # 小到大排序
             weight_save_path = opj(save_dir,
-                                   f'model_seed{seed}_fold0_epoch{epoch}_val{round(avg_val_loss, 4)}_f1_score_{round(train_epoch_f1_score, 4)}.pth')
+                                   f'model_seed{seed}_fold0_epoch{epoch}_val{round(avg_val_loss, 4)}_f1_score_{round(valid_epoch_avg_f1_score, 4)}.pth')
             result_dict[epoch] = weight_save_path
             if avg_val_loss < best_scores[-1, 1]:
                 # topk
@@ -207,5 +207,5 @@ if __name__ == '__main__':
         record_df.loc[epoch - 1, log_cols] = np.array([epoch,
                                                        [group['lr'] for group in optimizer.param_groups],
                                                        avg_train_loss, avg_val_loss,
-                                                       train_epoch_f1_score, valid_epoch_f1_Score], dtype='object')
+                                                       train_epoch_avg_f1_score, valid_epoch_avg_f1_score], dtype='object')
     record_df.to_csv(conf_loader.attempt_load_param("result_csv_path") + f'log_seed{seed}_result.csv', index=False)
