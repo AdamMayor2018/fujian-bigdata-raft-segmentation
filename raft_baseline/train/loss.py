@@ -35,3 +35,13 @@ def criterion_lovasz_hinge_non_empty(criterion, logits_deep, y):
         loss += lovasz_hinge(logits_deep2[non_empty_idx].view(-1, h, w),
                              y2[non_empty_idx].view(-1, h, w))
         return loss
+
+def f1_loss(logits, target):
+    logits = torch.sigmoid(logits)
+    logits = torch.clamp(logits * (1 - target), min=0.01) + logits * target
+    tp = logits * target
+    tp = tp.sum(dim=0)
+    precision = tp / (logits.sum(dim=0) + 1e-8)
+    recall = tp / (target.sum(dim=0) + 1e-8)
+    f1 = 2 * (precision * recall / (precision + recall + 1e-8))
+    return 1 - f1.mean()

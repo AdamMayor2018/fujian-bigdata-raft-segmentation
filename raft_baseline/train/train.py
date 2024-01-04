@@ -15,6 +15,7 @@ from torch import nn, optim
 from sklearn.metrics import f1_score
 import logging
 import pandas as pd
+from raft_baseline.train.loss import f1_loss
 
 logger = logging.getLogger('train')
 logger.setLevel("DEBUG")
@@ -74,7 +75,7 @@ if __name__ == '__main__':
         model.load_state_dict(torch.load(conf_loader.attempt_load_param("pretrained_path")))
     model = model.to(device)
     # critirion optimizer scheduler
-    criterion = nn.BCEWithLogitsLoss().to(device)
+    #criterion = nn.BCEWithLogitsLoss().to(device)
     optim_params = conf_loader.attempt_load_param("optim_params")
     for k, v in optim_params.items():
         if isinstance(v, str):
@@ -142,7 +143,8 @@ if __name__ == '__main__':
                 y_true = targets.to(device, torch.float32, non_blocking=True)
                 # logger.info(f"{logits.shape}, {y_true.shape}")
                 logits = logits.squeeze(1)
-                train_batch_loss = criterion(logits, y_true)
+                #train_batch_loss = criterion(logits, y_true)
+                train_batch_loss = f1_loss(logits, y_true)
                 # logger.info(f"batch : {i}, train_batch_loss: {train_batch_loss}")
                 train_batch_loss.backward()
                 optimizer.step()
@@ -188,7 +190,8 @@ if __name__ == '__main__':
                         else:
                             logits = model(inputs.to(device, torch.float32, non_blocking=True))
                     y_true = targets.to(device, torch.float32, non_blocking=True)
-                    val_batch_loss = criterion(logits.squeeze(1), y_true).item() * val_batch
+                    #val_batch_loss = criterion(logits.squeeze(1), y_true).item() * val_batch
+                    val_batch_loss = f1_loss(logits.squeeze(1), y_true).item() * val_batch
 
                     valid_epoch_loss += val_batch_loss
                     logits = torch.sigmoid(logits).detach().cpu().numpy()
