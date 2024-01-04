@@ -27,7 +27,7 @@ def my_collate(batch):
 
 if __name__ == '__main__':
     # fix seed
-    fix_seed(2024)
+    fix_seed(2022)
     # load global config
     conf_loader = YamlConfigLoader(yaml_path="../config/raft_baseline_config.yaml")
     device = conf_loader.attempt_load_param("device")
@@ -61,7 +61,7 @@ if __name__ == '__main__':
         if isinstance(v, str):
             optim_params[k] = eval(v)
     #optim_params = {k: eval(v) for k, v in optim_params.items() if type(v) == "str"}
-    optimizer = optim.Adam(model.parameters(), **optim_params)
+    optimizer = optim.AdamW(model.parameters(), **optim_params)
     sched_params = conf_loader.attempt_load_param("sched_params")
     for k, v in sched_params.items():
         if isinstance(v, str):
@@ -112,7 +112,7 @@ if __name__ == '__main__':
                 #logger.info(f"{logits.shape}, {y_true.shape}")
                 logits = logits.squeeze(1)
                 train_batch_loss = criterion(logits, y_true)
-                logger.info(f"batch : {i}, train_batch_loss: {train_batch_loss}")
+                #logger.info(f"batch : {i}, train_batch_loss: {train_batch_loss}")
                 train_batch_loss.backward()
                 optimizer.step()
                 optimizer.zero_grad()

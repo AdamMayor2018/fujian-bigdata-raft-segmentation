@@ -164,6 +164,8 @@ if __name__ == '__main__':
             pair = dataset[i]
             image = pair["img"]
             mask = pair["mask"]
+            if mask.sum() == 0:
+                continue
             #print(image.shape, mask.shape)
             image = Image.fromarray(image)
             mask = Image.fromarray(mask.squeeze(-1))

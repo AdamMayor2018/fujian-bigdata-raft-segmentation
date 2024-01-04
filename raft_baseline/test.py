@@ -10,7 +10,7 @@ from PIL import Image, ImageFile
 import numpy as np
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 Image.MAX_IMAGE_PIXELS = None
-mask_path = "/data/cx/datasets/fujian_gis_data/raw/raw_image/mask1.tif"
+mask_path = "/data/cx/datasets/fujian_gis_data/train/labels/train_1_935.jpg"
 
 mask = Image.open(mask_path)
 mask = mask.convert("L")
