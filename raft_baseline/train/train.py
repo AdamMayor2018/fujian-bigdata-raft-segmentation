@@ -112,7 +112,7 @@ if __name__ == '__main__':
                 #logger.info(f"{logits.shape}, {y_true.shape}")
                 logits = logits.squeeze(1)
                 train_batch_loss = criterion(logits, y_true)
-                logger.info(f"batch : {i}, train_batch_loss: {train_batch_loss / train_batch}")
+                logger.info(f"batch : {i}, train_batch_loss: {train_batch_loss}")
                 train_batch_loss.backward()
                 optimizer.step()
                 optimizer.zero_grad()
