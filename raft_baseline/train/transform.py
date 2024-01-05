@@ -4,7 +4,7 @@ from albumentations import (Compose, HorizontalFlip, VerticalFlip, Rotate, Rando
                             GridDistortion, RandomSizedCrop, RandomCrop, CenterCrop,
                             RandomBrightnessContrast, HueSaturationValue, IAASharpen,
                             RandomGamma, RandomBrightness, RandomBrightnessContrast,
-                            GaussianBlur, CLAHE,
+                            GaussianBlur, CLAHE,channel_shuffle,
                             Cutout, CoarseDropout, GaussNoise, ChannelShuffle, ToGray, OpticalDistortion,
                             Normalize, OneOf, NoOp)
 from albumentations.pytorch import ToTensorV2
@@ -25,8 +25,8 @@ class AugmentationTool:
             # Basic
             RandomRotate90(p=0.5),
             HorizontalFlip(p=0.5),
-
-            # #Morphology
+            # ChannelShuffle(p=0.3),
+            # # #Morphology
             # ShiftScaleRotate(shift_limit=0, scale_limit=(-0.2, 0.2), rotate_limit=(-30, 30),
             #                  interpolation=1, border_mode=0, value=(0, 0, 0), p=0.5),
             # GaussNoise(var_limit=(0, 50.0), mean=0, p=0.5),

@@ -43,7 +43,7 @@ class RaftDataset(Dataset):
         if h != self.height or w != self.width:
             img = cv2.resize(img, (self.width, self.height), interpolation=cv2.INTER_AREA)
             mask = cv2.resize(mask, (self.width, self.height), interpolation=cv2.INTER_AREA)
-        # 原图给二值化的1对应85
+        # 原图给二值化的1对应其他值
         mask[mask != 0] = 1
         if self.conf_loader.attempt_load_param("transform") and self.transform:
             augmented = self.transform(image=img.astype(np.uint8),

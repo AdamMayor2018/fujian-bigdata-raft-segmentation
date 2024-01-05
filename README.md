@@ -7,3 +7,6 @@
 
 # F1 score对应最好的loss？
 https://www.kaggle.com/code/rejpalcz/best-loss-function-for-f1-score-metric/notebook
+
+# 模型选择库
+https://github.com/qubvel/segmentation_models.pytorch

@@ -14,8 +14,9 @@ from raft_baseline.models.model import build_model
 from torch import nn, optim
 from sklearn.metrics import f1_score
 import logging
+import segmentation_models_pytorch as smp
 import pandas as pd
-from raft_baseline.train.loss import f1_loss
+from raft_baseline.train.loss import f1_loss, dice_loss
 
 logger = logging.getLogger('train')
 logger.setLevel("DEBUG")
@@ -36,6 +37,7 @@ def cal_np_f1_score(targets, logits):
     # 计算F1分数
     f1_score = 2 * (precision * recall) / (precision + recall) + 1e-6
     return f1_score
+
 
 def my_collate(batch):
     inputs = torch.stack([data["image"] for data in batch])
@@ -65,17 +67,26 @@ if __name__ == '__main__':
 
     # model
     resolution = (conf_loader.attempt_load_param("train_width"), conf_loader.attempt_load_param("train_height"))
-    model_params = conf_loader.attempt_load_param("model_params")
-    model = build_model(model_name=conf_loader.attempt_load_param("backbone_name"), resolution=resolution,
-                        deep_supervision=model_params["deep_supervision"], clf_head=model_params["clf_head"],
-                        clf_threshold=eval(model_params["clf_threshold"]),
-                        load_weights=model_params["load_backbone_weights"])
+    # model_params = conf_loader.attempt_load_param("model_params")
+    # model = build_model(model_name=conf_loader.attempt_load_param("backbone_name"), resolution=resolution,
+    #                     deep_supervision=model_params["deep_supervision"], clf_head=model_params["clf_head"],
+    #                     clf_threshold=eval(model_params["clf_threshold"]),
+    #                     load_weights=model_params["load_backbone_weights"])
+    model = smp.Unet(
+        encoder_name='timm-efficientnet-b2',
+        encoder_weights='noisy-student',
+        in_channels=3,
+        classes=1,
+        activation='sigmoid'
+    )
+
     # load pretrained
     if conf_loader.attempt_load_param("pretrained") and conf_loader.attempt_load_param("pretrained_path"):
         model.load_state_dict(torch.load(conf_loader.attempt_load_param("pretrained_path")))
     model = model.to(device)
     # critirion optimizer scheduler
-    #criterion = nn.BCEWithLogitsLoss().to(device)
+    # criterion = nn.BCEWithLogitsLoss().to(device)
+    criterion = smp.losses.DiceLoss(smp.losses.BINARY_MODE, from_logits=True)
     optim_params = conf_loader.attempt_load_param("optim_params")
     for k, v in optim_params.items():
         if isinstance(v, str):
@@ -100,7 +111,6 @@ if __name__ == '__main__':
     best_scores = np.zeros((best_k, 2))
     best_scores[:, 1] += 1e6
     result_dict = {}
-
 
     # train
     record_df = pd.DataFrame(columns=log_cols, dtype=object)
@@ -127,31 +137,32 @@ if __name__ == '__main__':
                 inputs = data[0]
                 targets = data[1]
                 train_batch = inputs.shape[0]
-                if model_params["clf_head"]:
-                    y_clf = targets.to(device, torch.float32, non_blocking=True)
-                    if model_params["deep_supervision"]:
-                        logits, logits_deeps, logits_clf = model(inputs.to(device, torch.float32, non_blocking=True))
-                    else:
-                        logits, logits_clf = model(inputs.to(device, torch.float32, non_blocking=True))
-                else:
-                    if model_params["deep_supervision"]:
-                        logits, logits_deeps = model(inputs.to(device, torch.float32, non_blocking=True))
-                    else:
-                        logits = model(inputs.to(device, torch.float32, non_blocking=True))
+                # if model_params["clf_head"]:
+                #     y_clf = targets.to(device, torch.float32, non_blocking=True)
+                #     if model_params["deep_supervision"]:
+                #         logits, logits_deeps, logits_clf = model(inputs.to(device, torch.float32, non_blocking=True))
+                #     else:
+                #         logits, logits_clf = model(inputs.to(device, torch.float32, non_blocking=True))
+                # else:
+                #     if model_params["deep_supervision"]:
+                #         logits, logits_deeps = model(inputs.to(device, torch.float32, non_blocking=True))
+                #     else:
+                #         logits = model(inputs.to(device, torch.float32, non_blocking=True))
                 # import pdb
                 # pdb.set_trace()
+                logits = model(inputs.to(device, torch.float32, non_blocking=True))
                 y_true = targets.to(device, torch.float32, non_blocking=True)
                 # logger.info(f"{logits.shape}, {y_true.shape}")
                 logits = logits.squeeze(1)
-                #train_batch_loss = criterion(logits, y_true)
-                train_batch_loss = f1_loss(logits, y_true)
+                # train_batch_loss = criterion(logits, y_true)
+                train_batch_loss = criterion(logits, y_true)
                 # logger.info(f"batch : {i}, train_batch_loss: {train_batch_loss}")
                 train_batch_loss.backward()
                 optimizer.step()
                 optimizer.zero_grad()
                 train_epoch_loss += train_batch_loss.item() * train_batch
                 logits = torch.sigmoid(logits).detach().cpu().numpy()
-                logits[logits >= 0.5] = 1
+                logits[logits > 0.5] = 1
                 logits[logits <= 0.5] = 0
                 train_targets_all.extend(targets)
                 train_logits_all.extend(logits)
@@ -161,7 +172,7 @@ if __name__ == '__main__':
                 # logger.info(f"batch f1 score: {batch_train_f1_score}, np f1 score:{np_train_f1_score}")
 
             avg_train_loss = train_epoch_loss / len(train_dataset)
-            #train_epoch_f1_score = sum(train_epoch_f1_scores) / len(train_epoch_f1_scores)
+            # train_epoch_f1_score = sum(train_epoch_f1_scores) / len(train_epoch_f1_scores)
             train_epoch_f1_score = cal_np_f1_score(np.array(train_targets_all), np.array(train_logits_all))
             logger.info(f"epoch {epoch}, train loss: {avg_train_loss}, train F1_score： {train_epoch_f1_score}")
             # validation
@@ -177,26 +188,27 @@ if __name__ == '__main__':
                 targets = data[1]
                 with torch.no_grad():
                     val_batch = inputs.shape[0]
-                    if model_params["clf_head"]:
-                        y_clf = targets.to(device, torch.float32, non_blocking=True)
-                        if model_params["deep_supervision"]:
-                            logits, logits_deeps, logits_clf = model(
-                                inputs.to(device, torch.float32, non_blocking=True))
-                        else:
-                            logits, logits_clf = model(inputs.to(device, torch.float32, non_blocking=True))
-                    else:
-                        if model_params["deep_supervision"]:
-                            logits, logits_deeps = model(inputs.to(device, torch.float32, non_blocking=True))
-                        else:
-                            logits = model(inputs.to(device, torch.float32, non_blocking=True))
+                    # if model_params["clf_head"]:
+                    #     y_clf = targets.to(device, torch.float32, non_blocking=True)
+                    #     if model_params["deep_supervision"]:
+                    #         logits, logits_deeps, logits_clf = model(
+                    #             inputs.to(device, torch.float32, non_blocking=True))
+                    #     else:
+                    #         logits, logits_clf = model(inputs.to(device, torch.float32, non_blocking=True))
+                    # else:
+                    #     if model_params["deep_supervision"]:
+                    #         logits, logits_deeps = model(inputs.to(device, torch.float32, non_blocking=True))
+                    #     else:
+                    #         logits = model(inputs.to(device, torch.float32, non_blocking=True))
+                    logits = model(inputs.to(device, torch.float32, non_blocking=True))
                     y_true = targets.to(device, torch.float32, non_blocking=True)
-                    #val_batch_loss = criterion(logits.squeeze(1), y_true).item() * val_batch
-                    val_batch_loss = f1_loss(logits.squeeze(1), y_true).item() * val_batch
+                    # val_batch_loss = criterion(logits.squeeze(1), y_true).item() * val_batch
+                    val_batch_loss = criterion(logits.squeeze(1), y_true).item() * val_batch
 
                     valid_epoch_loss += val_batch_loss
                     logits = torch.sigmoid(logits).detach().cpu().numpy()
                     logits[logits >= 0.5] = 1
-                    logits[logits <= 0.5] = 0
+                    logits[logits < 0.5] = 0
                     val_logits_all.extend(logits)
                     val_targets_all.extend(targets)
                     # batch_val_f1_score = f1_score(targets.flatten().tolist(), logits.flatten().tolist())
@@ -209,7 +221,7 @@ if __name__ == '__main__':
             avg_val_loss = valid_epoch_loss / len(valid_dataset)
             scheduler.step(valid_epoch_loss)
             valid_epoch_f1_score = cal_np_f1_score(np.array(val_targets_all), np.array(val_logits_all))
-            #valid_epoch_f1_score = sum(valid_epoch_f1_scores) / len(valid_epoch_f1_scores)
+            # valid_epoch_f1_score = sum(valid_epoch_f1_scores) / len(valid_epoch_f1_scores)
             logger.info(f"epoch {epoch}, val loss: {avg_val_loss}, valid F1_score： {valid_epoch_f1_score}")
 
             # save topk val loss model weights
