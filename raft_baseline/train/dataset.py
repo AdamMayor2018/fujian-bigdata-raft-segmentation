@@ -37,6 +37,7 @@ class RaftDataset(Dataset):
         label_path = self.pairs["labels"][idx]
         #print(img_path, label_path)
         img = cv2.imread(img_path)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         mask = cv2.imread(label_path, cv2.IMREAD_GRAYSCALE)
         h, w, c = img.shape
         # 如果尺寸和配置不通进行缩放

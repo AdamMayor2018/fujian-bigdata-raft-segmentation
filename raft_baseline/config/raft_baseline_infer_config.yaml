@@ -9,20 +9,20 @@ split_ratio: 0.8  #train val split ratio
 #overlap tile params
 shift_h: 0
 shift_w: 0
-tile_size: 512
+tile_size: 256
 
 #数据增强parmas
-train_width: 512 #训练宽度尺寸 训练预处理会被resize到这一宽度
-train_height: 512 #训练高度尺寸 训练预处理的时候会被resize到这一高度
-val_width: 512 # 预测宽度尺寸 预测预处理的时候会被resize到这一宽度
-val_height: 512 #预测高度尺寸 预测预处理的的时候会被resize到这一高度
+train_width: 256 #训练宽度尺寸 训练预处理会被resize到这一宽度
+train_height: 256 #训练高度尺寸 训练预处理的时候会被resize到这一高度
+val_width: 256 # 预测宽度尺寸 预测预处理的时候会被resize到这一宽度
+val_height: 256 #预测高度尺寸 预测预处理的的时候会被resize到这一高度
 
 #训练相关
 device: 'cuda:2'
 val_batch_size: 16
 backbone_name: 'seresnext101'
 pretrained: True
-pretrained_path: '/data/cx/competition/fujian_bigdata_GIS_competition/raft_baseline/weights/model_seed2022_fold0_epoch2_val0.4243_f1_score_48.4702.pth'
+pretrained_path: '/data/cx/competition/fujian_bigdata_GIS_competition/raft_baseline/weights/model_seed2022_fold0_epoch20_val0.2612_f1_score_0.8419.pth'
 dice_threshold: 0.5
 model_params:
   deep_supervision: False

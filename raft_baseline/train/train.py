@@ -72,12 +72,12 @@ if __name__ == '__main__':
     #                     deep_supervision=model_params["deep_supervision"], clf_head=model_params["clf_head"],
     #                     clf_threshold=eval(model_params["clf_threshold"]),
     #                     load_weights=model_params["load_backbone_weights"])
-    model = smp.Unet(
-        encoder_name='timm-efficientnet-b2',
-        encoder_weights='noisy-student',
+    model = smp.DeepLabV3Plus(
+        encoder_name='resnet18',
+        #encoder_weights='noisy-student',
         in_channels=3,
         classes=1,
-        activation='sigmoid'
+        activation=None
     )
 
     # load pretrained
@@ -86,7 +86,8 @@ if __name__ == '__main__':
     model = model.to(device)
     # critirion optimizer scheduler
     # criterion = nn.BCEWithLogitsLoss().to(device)
-    criterion = smp.losses.DiceLoss(smp.losses.BINARY_MODE, from_logits=True)
+    criterion = smp.losses.DiceLoss(smp.losses.BINARY_MODE, from_logits=True).to(device)
+    criterion2 = nn.BCEWithLogitsLoss().to(device)
     optim_params = conf_loader.attempt_load_param("optim_params")
     for k, v in optim_params.items():
         if isinstance(v, str):
@@ -154,18 +155,18 @@ if __name__ == '__main__':
                 y_true = targets.to(device, torch.float32, non_blocking=True)
                 # logger.info(f"{logits.shape}, {y_true.shape}")
                 logits = logits.squeeze(1)
-                # train_batch_loss = criterion(logits, y_true)
-                train_batch_loss = criterion(logits, y_true)
-                # logger.info(f"batch : {i}, train_batch_loss: {train_batch_loss}")
+                #train_batch_loss = criterion(logits, y_true)
+                train_batch_loss = 0.5 * criterion(logits, y_true) + 0.5 * criterion2(logits, y_true)
+                # logger.info(f"train batch : {i}, dice_loss: {0.5 * criterion(logits, y_true)}, bce_loss: {0.5 * criterion2(logits, y_true)}")
                 train_batch_loss.backward()
                 optimizer.step()
                 optimizer.zero_grad()
                 train_epoch_loss += train_batch_loss.item() * train_batch
                 logits = torch.sigmoid(logits).detach().cpu().numpy()
-                logits[logits > 0.5] = 1
-                logits[logits <= 0.5] = 0
-                train_targets_all.extend(targets)
-                train_logits_all.extend(logits)
+                logits[logits >= 0.5] = 1
+                logits[logits < 0.5] = 0
+                train_targets_all.extend(targets.numpy().flatten().tolist())
+                train_logits_all.extend(logits.flatten().tolist())
                 # batch_train_f1_score = f1_score(targets.flatten().tolist(), logits.flatten().tolist())
                 # np_train_f1_score = cal_np_f1_score(targets.flatten().numpy(), logits.flatten())
                 # train_epoch_f1_scores.append(batch_train_f1_score)
@@ -180,8 +181,6 @@ if __name__ == '__main__':
             model.eval()
             # torch.cuda.empty_cache()
             # gc.collect()
-            y_preds = []
-            y_trues = []
             val_epoch = tqdm(valid_loader, total=int(len(valid_loader)))
             for i, data in enumerate(val_epoch):
                 inputs = data[0]
@@ -201,16 +200,19 @@ if __name__ == '__main__':
                     #     else:
                     #         logits = model(inputs.to(device, torch.float32, non_blocking=True))
                     logits = model(inputs.to(device, torch.float32, non_blocking=True))
+                    logits = logits.squeeze(1)
                     y_true = targets.to(device, torch.float32, non_blocking=True)
                     # val_batch_loss = criterion(logits.squeeze(1), y_true).item() * val_batch
-                    val_batch_loss = criterion(logits.squeeze(1), y_true).item() * val_batch
-
-                    valid_epoch_loss += val_batch_loss
+                    val_batch_loss = 0.5 * criterion(logits, y_true) + 0.5 * criterion2(logits, y_true)
+                    #val_batch_loss = criterion(logits.squeeze(1), y_true).item() * val_batch
+                    # logger.info(
+                    #     f"val batch : {i}, dice_loss: {0.5 * criterion(logits, y_true)}, bce_loss: {0.5 * criterion2(logits, y_true)}")
+                    valid_epoch_loss += val_batch_loss.item() * val_batch
                     logits = torch.sigmoid(logits).detach().cpu().numpy()
                     logits[logits >= 0.5] = 1
                     logits[logits < 0.5] = 0
-                    val_logits_all.extend(logits)
-                    val_targets_all.extend(targets)
+                    val_logits_all.extend(logits.flatten().tolist())
+                    val_targets_all.extend(targets.numpy().flatten().tolist())
                     # batch_val_f1_score = f1_score(targets.flatten().tolist(), logits.flatten().tolist())
                     # valid_epoch_f1_scores.append(batch_val_f1_score)
                 # release GPU memory cache
