@@ -56,8 +56,8 @@ mask[mask!=0] = 1
 print(image.shape)
 logits = model.predict(image)
 logits = torch.sigmoid(logits)
-logits[logits >= 0.7] = 1
-logits[logits < 0.7] = 0
+logits[logits >= 0.75] = 1
+logits[logits < 0.75] = 0
 logits = logits.squeeze(0).squeeze(0).cpu().detach().numpy()
 print(logits.shape)
 plt.subplot(1, 3, 1)
