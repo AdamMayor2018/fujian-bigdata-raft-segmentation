@@ -78,9 +78,10 @@ def split_tiffs(tif_path: str, conf_loader: YamlConfigLoader):
 
 
 class RaftTileDataset(Dataset):
-    def __init__(self, filename, conf_loader: YamlConfigLoader):
+    def __init__(self, filename, conf_loader: YamlConfigLoader, mode="train"):
         super().__init__()
         self.conf_loader = conf_loader
+        self.mode = mode
         if os.path.exists(filename):
             path = filename
         else:
@@ -97,8 +98,8 @@ class RaftTileDataset(Dataset):
                     self.layers.append(rasterio.open(subdataset))
         self.h, self.w = self.image.height, self.image.width
         self.sz = self.conf_loader.attempt_load_param('tile_size')
-        self.shift_h = self.conf_loader.attempt_load_param('shift_h')
-        self.shift_w = self.conf_loader.attempt_load_param('shift_w')
+        self.shift_h = self.conf_loader.attempt_load_param('shift_h') if self.mode == "train" else self.conf_loader.attempt_load_param('val_shift_h')
+        self.shift_w = self.conf_loader.attempt_load_param('shift_w') if self.mode == "train" else self.conf_loader.attempt_load_param('val_shift_w')
         self.pad_h = self.sz - self.h % self.sz  # add to whole slide
         self.pad_w = self.sz - self.w % self.sz  # add to whole slide
         self.num_h = (self.h + self.pad_h) // self.sz
@@ -158,14 +159,14 @@ if __name__ == '__main__':
     print(train_raw_img_paths)
     for j, i_path in enumerate(train_raw_img_paths):
         #split_tiffs(i_path, conf_loader)
-        dataset = RaftTileDataset(i_path, conf_loader)
+        dataset = RaftTileDataset(i_path, conf_loader, mode="train")
         for i in range(len(dataset)):
             print(f"making train ({j}_{i}) data pair.")
             pair = dataset[i]
             image = pair["img"]
             mask = pair["mask"]
-            if mask.sum() == 0:
-                continue
+            # if mask.sum() == 0:
+            #     continue
             # if (mask == 0).sum() / mask.size > 0.9:
             #     continue
             image = Image.fromarray(image)
@@ -176,14 +177,14 @@ if __name__ == '__main__':
 
     for j, i_path in enumerate(val_raw_img_paths):
         #split_tiffs(i_path, conf_loader)
-        dataset = RaftTileDataset(i_path, conf_loader)
+        dataset = RaftTileDataset(i_path, conf_loader, mode="val")
         for i in range(len(dataset)):
             print(f"making val ({j}_{i}) data pair.")
             pair = dataset[i]
             image = pair["img"]
             mask = pair["mask"]
-            if mask.sum() == 0:
-                continue
+            # if mask.sum() == 0:
+            #     continue
             # if (mask == 0).sum() / mask.size > 0.9:
             #     continue
             #print(image.shape, mask.shape)

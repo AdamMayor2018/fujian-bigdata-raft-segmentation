@@ -85,6 +85,7 @@ if __name__ == '__main__':
         model.load_state_dict(torch.load(conf_loader.attempt_load_param("pretrained_path")))
     model = model.to(device)
     # critirion optimizer scheduler
+
     # criterion = nn.BCEWithLogitsLoss().to(device)
     criterion = smp.losses.DiceLoss(smp.losses.BINARY_MODE, from_logits=True).to(device)
     criterion2 = nn.BCEWithLogitsLoss().to(device)

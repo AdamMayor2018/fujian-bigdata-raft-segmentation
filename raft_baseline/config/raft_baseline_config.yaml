@@ -9,6 +9,8 @@ split_ratio: 0.8  #train val split ratio
 #overlap tile params
 shift_h: 64
 shift_w: 64
+val_shift_h: 0
+val_shift_w: 0
 tile_size: 256
 
 #数据增强parmas
@@ -20,9 +22,9 @@ val_height: 256 #预测高度尺寸 预测预处理的的时候会被resize到�
 
 #训练相关
 device: 'cuda:6'
-train_batch_size: 16
-val_batch_size: 16
-num_epochs: 20
+train_batch_size: 64
+val_batch_size: 64
+num_epochs: 50
 backbone_name: 'seresnext101'
 pretrained: False
 pretrained_path: None
@@ -33,7 +35,7 @@ model_params:
   clf_threshold: None
   load_backbone_weights: True
 optim_params:
-  lr: 0.00001
+  lr: 0.00005
   betas:  (0.9, 0.999)
   weight_decay: 0.0005
 lr_scheduler_name: 'ReduceLROnPlateau'

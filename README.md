@@ -10,3 +10,7 @@ https://www.kaggle.com/code/rejpalcz/best-loss-function-for-f1-score-metric/note
 
 # 模型选择库
 https://github.com/qubvel/segmentation_models.pytorch
+
+# 如何推理？
+1.提到了expansion tiles的方法
+https://www.kaggle.com/competitions/hubmap-kidney-segmentation/discussion/238013
