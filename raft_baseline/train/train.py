@@ -1,22 +1,18 @@
 import os.path
 
 import torch
-import gc
 from os.path import join as opj
 import numpy as np
 from tqdm import tqdm
 from raft_baseline.util.common import fix_seed
 from raft_baseline.config.conf_loader import YamlConfigLoader
 from raft_baseline.train.dataset import RaftDataset
-from raft_baseline.train.transform import AugmentationTool
+from model.transform import AugmentationTool
 from torch.utils.data import DataLoader
-from raft_baseline.models.model import build_model
 from torch import nn, optim
-from sklearn.metrics import f1_score
 import logging
 import segmentation_models_pytorch as smp
 import pandas as pd
-from raft_baseline.train.loss import f1_loss, dice_loss
 
 logger = logging.getLogger('train')
 logger.setLevel("DEBUG")

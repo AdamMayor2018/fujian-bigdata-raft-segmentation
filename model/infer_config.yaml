@@ -1,0 +1,17 @@
+#overlap tile params
+shift_h: 0
+shift_w: 0
+tile_size: 256
+pad_size: 32 #做expansion padding的时候的pad_size
+#数据增强parmas
+train_width: 256 #训练宽度尺寸 训练预处理会被resize到这一宽度
+train_height: 256 #训练高度尺寸 训练预处理的时候会被resize到这一高度
+val_width: 256 # 预测宽度尺寸 预测预处理的时候会被resize到这一宽度
+val_height: 256 #预测高度尺寸 预测预处理的的时候会被resize到这一高度
+
+#训练相关
+device: 'cuda:2'
+val_batch_size: 16
+backbone_name: 'seresnext101'
+pretrained: True
+pretrained_path: '/data/cx/competition/fujian_bigdata_GIS_competition/raft_baseline/weights/model_seed2022_fold0_epoch20_val0.2612_f1_score_0.8419.pth'

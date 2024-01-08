@@ -1,6 +1,5 @@
 # 训练数据处理
 import numpy as np
-import cv2
 from collections import defaultdict
 import os
 import cv2
@@ -8,7 +7,7 @@ from os.path import join as opj
 from torch.utils.data import Dataset
 from raft_baseline.config.conf_loader import YamlConfigLoader
 from glob import glob
-from raft_baseline.train.transform import AugmentationTool
+from model.transform import AugmentationTool
 
 
 class RaftDataset(Dataset):
