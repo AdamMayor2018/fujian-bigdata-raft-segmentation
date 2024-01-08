@@ -20,7 +20,7 @@ Image.MAX_IMAGE_PIXELS = None
 # mask = mask.convert("L")
 # plt.imshow(mask)
 # plt.show()
-from model.transform import AugmentationTool
+from raft_baseline.train.transform import AugmentationTool
 
 conf_loader = YamlConfigLoader(yaml_path="config/raft_baseline_infer_config.yaml")
 device = conf_loader.attempt_load_param("device")
