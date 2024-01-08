@@ -7,7 +7,7 @@ from tqdm import tqdm
 from raft_baseline.util.common import fix_seed
 from raft_baseline.config.conf_loader import YamlConfigLoader
 from raft_baseline.train.dataset import RaftDataset
-from model.transform import AugmentationTool
+from raft_baseline.train.transform import AugmentationTool
 from torch.utils.data import DataLoader
 from torch import nn, optim
 import logging
