@@ -1,7 +1,7 @@
 #overlap tile params
 shift_h: 0
 shift_w: 0
-tile_size: 256
+tile_size: 512
 pad_size: 32 #做expansion padding的时候的pad_size
 #数据增强parmas
 train_width: 256 #训练宽度尺寸 训练预处理会被resize到这一宽度

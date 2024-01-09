@@ -46,7 +46,6 @@ class RaftInferExpansionDataset(Dataset):
         self.num_w = self.width // self.matting_size # 竖着有多少块
         self.num_h += 1 if (self.pad_height % self.tile_size) != 0 else self.num_h
         self.num_w += 1 if (self.pad_width % self.tile_size) != 0 else self.num_w
-        pass
 
     def __len__(self):
         return self.num_w * self.num_h

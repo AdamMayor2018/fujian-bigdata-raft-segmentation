@@ -7,6 +7,7 @@
 import os.path
 import cv2
 import torch
+import time
 from PIL import Image, ImageFile
 import rasterio
 from rasterio.windows import Window
@@ -15,7 +16,9 @@ import numpy as np
 from os.path import join as opj
 from raft_baseline.config.conf_loader import YamlConfigLoader
 import glob
+from model.draw import draw_box
 from tqdm import tqdm
+import matplotlib.pyplot as plt
 import torch.nn.functional as F
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 Image.MAX_IMAGE_PIXELS = None
@@ -97,13 +100,12 @@ class RaftTileDataset(Dataset):
                 for i, subdataset in enumerate(subdatasets, 0):
                     self.layers.append(rasterio.open(subdataset))
         self.h, self.w = self.image.height, self.image.width
-        self.sz = self.conf_loader.attempt_load_param('tile_size')
-        self.shift_h = self.conf_loader.attempt_load_param('shift_h') if self.mode == "train" else self.conf_loader.attempt_load_param('val_shift_h')
-        self.shift_w = self.conf_loader.attempt_load_param('shift_w') if self.mode == "train" else self.conf_loader.attempt_load_param('val_shift_w')
-        self.pad_h = self.sz - self.h % self.sz  # add to whole slide
-        self.pad_w = self.sz - self.w % self.sz  # add to whole slide
-        self.num_h = (self.h + self.pad_h) // self.sz
-        self.num_w = (self.w + self.pad_w) // self.sz
+        self.tile_size = self.conf_loader.attempt_load_param('tile_size')
+        self.overlap_size = self.conf_loader.attempt_load_param('train_overlap_size') if self.mode == "train" else self.conf_loader.attempt_load_param('val_overlap_size')
+        self.pad_h = self.tile_size - self.h % self.tile_size  # add to whole slide
+        self.pad_w = self.tile_size - self.w % self.tile_size  # add to whole slide
+        self.num_h = (self.h + self.pad_h) // self.tile_size
+        self.num_w = (self.w + self.pad_w) // self.tile_size
         self.image = torch.from_numpy(self.image.read([1, 2, 3])).float()
         self.mask = torch.from_numpy(self.mask.read([1])).float()
         #pad image and mask
@@ -113,12 +115,12 @@ class RaftTileDataset(Dataset):
         pad_bottom = self.pad_h - pad_top
         self.image = F.pad(self.image, (pad_left, pad_right, pad_top, pad_bottom), mode='reflect').numpy().astype(np.uint8).transpose((1, 2, 0))
         self.mask = F.pad(self.mask, (pad_left, pad_right, pad_top, pad_bottom), mode='reflect').numpy().astype(np.uint8).transpose((1, 2, 0))
-
-        if self.h % self.sz < self.shift_h:
-            self.num_h -= 1
-        if self.w % self.sz < self.shift_w:
-            self.num_w -= 1
-        self.new_h, self.new_w, _ = self.image.shape
+        self.pad_h, self.pad_w, _ = self.image.shape
+        self.result_blank = np.ones((self.pad_h, self.pad_w, 3)).astype(np.uint8) * 255
+        self.num_h = self.pad_h // (self.tile_size - self.overlap_size)  # 横着有多少块
+        self.num_w = self.pad_w // (self.tile_size - self.overlap_size)  # 竖着有多少块
+        self.num_h += 1 if (self.pad_h % self.tile_size) != 0 else self.num_h
+        self.num_w += 1 if (self.pad_w % self.tile_size) != 0 else self.num_w
 
     def __len__(self):
         return self.num_h * self.num_w
@@ -127,23 +129,28 @@ class RaftTileDataset(Dataset):
         # prepare coordinates for rasterio
         i_h = idx // self.num_w
         i_w = idx % self.num_w
-        y = i_h * self.sz + self.shift_h
-        x = i_w * self.sz + self.shift_w
-        py0, py1 = max(0, y), min(y + self.sz, self.new_h)
-        px0, px1 = max(0, x), min(x + self.sz, self.new_w)
+        pad_ymin = i_h * self.tile_size if i_h == 0 else i_h * self.tile_size - self.overlap_size * i_h
+        pad_xmin = i_w * self.tile_size if i_w == 0 else i_w * self.tile_size - self.overlap_size * i_w
+        # pad crop idx
+        pad_ymax = min(pad_ymin + self.tile_size, self.pad_h)
 
+        pad_xmax = min(pad_xmin + self.tile_size, self.pad_w)
+        pad_xmin = pad_xmin if pad_xmin + self.tile_size < self.pad_w else self.pad_w - self.tile_size
+        pad_ymin = pad_ymin if pad_ymin + self.tile_size < self.pad_h else self.pad_h - self.tile_size
+
+        # self.result_blank = draw_box(self.result_blank, cords=(pad_xmin, pad_ymin, pad_xmax, pad_ymax), color=(255, 0, 0),
+        #                       thickness=3)
         # placeholder for input tile (before resize)
-        img_patch = np.zeros((self.sz, self.sz, 3), np.uint8)
-        mask_patch = np.zeros((self.sz, self.sz, 1), np.uint8)
-
+        img_patch = np.zeros((self.tile_size, self.tile_size, 3), np.uint8)
+        mask_patch = np.zeros((self.tile_size, self.tile_size, 1), np.uint8)
         # replace the value for img patch
         if self.image.shape[-1] == 3:
-            img_patch[0:py1 - py0, 0:px1 - px0] = self.image[py0: py1, px0: px1, :]
+            img_patch[0:pad_ymax - pad_ymin, 0:pad_xmax - pad_xmin] = self.image[pad_ymin: pad_ymax, pad_xmin: pad_xmax, :]
                 #np.moveaxis(self.image.read([1, 2, 3], window=Window.from_slices((py0, py1), (px0, px1))), 0, -1)
 
         # replace the value for mask patch
         if self.mask.shape[-1] == 1:
-            mask_patch[0:py1 - py0, 0:px1 - px0] = self.mask[py0: py1, px0: px1, :]
+            mask_patch[0:pad_ymax - pad_ymin, 0:pad_xmax - pad_xmin] = self.mask[pad_ymin: pad_ymax, pad_xmin: pad_xmax, :]
                 #np.moveaxis(self.mask.read([1], window=Window.from_slices((py0, py1), (px0, px1))), 0, -1)
         return {'img': img_patch, 'mask': mask_patch}
 
@@ -162,33 +169,34 @@ if __name__ == '__main__':
         dataset = RaftTileDataset(i_path, conf_loader, mode="train")
         for i in range(len(dataset)):
             print(f"making train ({j}_{i}) data pair.")
-    #         pair = dataset[i]
-    #         image = pair["img"]
-    #         mask = pair["mask"]
-    #         # if mask.sum() == 0:
-    #         #     continue
-    #         # if (mask == 0).sum() / mask.size > 0.9:
-    #         #     continue
-    #         image = Image.fromarray(image)
-    #         mask = Image.fromarray(mask.squeeze(-1))
-    #         mask = mask.convert("L")
-    #         image.save(opj(f"{train_dir}", "images", f"train_{j}_{i}.jpg"))
-    #         mask.save(opj(f"{train_dir}", "labels", f"train_{j}_{i}.jpg"))
-    #
-    # for j, i_path in enumerate(val_raw_img_paths):
-    #     #split_tiffs(i_path, conf_loader)
-    #     dataset = RaftTileDataset(i_path, conf_loader, mode="val")
-    #     for i in range(len(dataset)):
-    #         print(f"making val ({j}_{i}) data pair.")
-    #         pair = dataset[i]
-    #         image = pair["img"]
-    #         mask = pair["mask"]
-    #         # if mask.sum() == 0:
-    #         #     continue
-    #         # if (mask == 0).sum() / mask.size > 0.9:
-    #         #     continue
-    #         #print(image.shape, mask.shape)
-    #         image = Image.fromarray(image)
-    #         mask = Image.fromarray(mask.squeeze(-1))
-    #         image.save(opj(f"{val_dir}", "images", f"val_{j}_{i}.jpg"))
-    #         mask.save(opj(f"{val_dir}", "labels", f"val_{j}_{i}.jpg"))
+            pair = dataset[i]
+            image = pair["img"]
+            mask = pair["mask"]
+            # if mask.sum() == 0:
+            #     continue
+            # if (mask == 0).sum() / mask.size > 0.9:
+            #     continue
+            image = Image.fromarray(image)
+            mask = Image.fromarray(mask.squeeze(-1))
+            mask = mask.convert("L")
+            image.save(opj(f"{train_dir}", "images", f"train_{j}_{i}.jpg"))
+            mask.save(opj(f"{train_dir}", "labels", f"train_{j}_{i}.jpg"))
+        #plt.imsave(f"tile_show_{i}.jpg", dataset.result_blank)
+
+    for j, i_path in enumerate(val_raw_img_paths):
+        #split_tiffs(i_path, conf_loader)
+        dataset = RaftTileDataset(i_path, conf_loader, mode="val")
+        for i in range(len(dataset)):
+            print(f"making val ({j}_{i}) data pair.")
+            pair = dataset[i]
+            image = pair["img"]
+            mask = pair["mask"]
+            # if mask.sum() == 0:
+            #     continue
+            # if (mask == 0).sum() / mask.size > 0.9:
+            #     continue
+            #print(image.shape, mask.shape)
+            image = Image.fromarray(image)
+            mask = Image.fromarray(mask.squeeze(-1))
+            image.save(opj(f"{val_dir}", "images", f"val_{j}_{i}.jpg"))
+            mask.save(opj(f"{val_dir}", "labels", f"val_{j}_{i}.jpg"))
