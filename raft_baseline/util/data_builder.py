@@ -162,33 +162,33 @@ if __name__ == '__main__':
         dataset = RaftTileDataset(i_path, conf_loader, mode="train")
         for i in range(len(dataset)):
             print(f"making train ({j}_{i}) data pair.")
-            pair = dataset[i]
-            image = pair["img"]
-            mask = pair["mask"]
-            # if mask.sum() == 0:
-            #     continue
-            # if (mask == 0).sum() / mask.size > 0.9:
-            #     continue
-            image = Image.fromarray(image)
-            mask = Image.fromarray(mask.squeeze(-1))
-            mask = mask.convert("L")
-            image.save(opj(f"{train_dir}", "images", f"train_{j}_{i}.jpg"))
-            mask.save(opj(f"{train_dir}", "labels", f"train_{j}_{i}.jpg"))
-
-    for j, i_path in enumerate(val_raw_img_paths):
-        #split_tiffs(i_path, conf_loader)
-        dataset = RaftTileDataset(i_path, conf_loader, mode="val")
-        for i in range(len(dataset)):
-            print(f"making val ({j}_{i}) data pair.")
-            pair = dataset[i]
-            image = pair["img"]
-            mask = pair["mask"]
-            # if mask.sum() == 0:
-            #     continue
-            # if (mask == 0).sum() / mask.size > 0.9:
-            #     continue
-            #print(image.shape, mask.shape)
-            image = Image.fromarray(image)
-            mask = Image.fromarray(mask.squeeze(-1))
-            image.save(opj(f"{val_dir}", "images", f"val_{j}_{i}.jpg"))
-            mask.save(opj(f"{val_dir}", "labels", f"val_{j}_{i}.jpg"))
+    #         pair = dataset[i]
+    #         image = pair["img"]
+    #         mask = pair["mask"]
+    #         # if mask.sum() == 0:
+    #         #     continue
+    #         # if (mask == 0).sum() / mask.size > 0.9:
+    #         #     continue
+    #         image = Image.fromarray(image)
+    #         mask = Image.fromarray(mask.squeeze(-1))
+    #         mask = mask.convert("L")
+    #         image.save(opj(f"{train_dir}", "images", f"train_{j}_{i}.jpg"))
+    #         mask.save(opj(f"{train_dir}", "labels", f"train_{j}_{i}.jpg"))
+    #
+    # for j, i_path in enumerate(val_raw_img_paths):
+    #     #split_tiffs(i_path, conf_loader)
+    #     dataset = RaftTileDataset(i_path, conf_loader, mode="val")
+    #     for i in range(len(dataset)):
+    #         print(f"making val ({j}_{i}) data pair.")
+    #         pair = dataset[i]
+    #         image = pair["img"]
+    #         mask = pair["mask"]
+    #         # if mask.sum() == 0:
+    #         #     continue
+    #         # if (mask == 0).sum() / mask.size > 0.9:
+    #         #     continue
+    #         #print(image.shape, mask.shape)
+    #         image = Image.fromarray(image)
+    #         mask = Image.fromarray(mask.squeeze(-1))
+    #         image.save(opj(f"{val_dir}", "images", f"val_{j}_{i}.jpg"))
+    #         mask.save(opj(f"{val_dir}", "labels", f"val_{j}_{i}.jpg"))
