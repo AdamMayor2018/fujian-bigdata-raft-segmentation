@@ -17,8 +17,8 @@ Image.MAX_IMAGE_PIXELS = None
 from transform import AugmentationTool
 import numpy as np
 import torch
-import cv2
-import os
+# import cv2
+# import os
 
 
 class RaftInferExpansionDataset(Dataset):
@@ -26,7 +26,7 @@ class RaftInferExpansionDataset(Dataset):
         self.image = np.array(Image.open(file_path)).astype(np.float32).transpose((2, 0, 1))
         self.image = torch.from_numpy(self.image)
         self.transform = aug.get_transforms_valid()
-        print(self.image.shape)
+        # print(self.image.shape)
         _, self.height, self.width = self.image.shape
         self.tile_size = conf_loader.attempt_load_param("tile_size")
         self.pad_size = conf_loader.attempt_load_param("pad_size")
@@ -50,7 +50,6 @@ class RaftInferExpansionDataset(Dataset):
         return self.num_w * self.num_h
 
     def __getitem__(self, idx):
-        time.sleep(0.5)
         #返回的应该是pad之后的切片图像（给到模型）和在原始图mask上的填充索引
         i_h = idx // self.num_w
         i_w = idx % self.num_w
