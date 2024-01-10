@@ -41,7 +41,7 @@ def main(to_pred_dir, result_save_path):
     # model
     model = smp.DeepLabV3Plus(
         encoder_name=conf_loader.attempt_load_param("backbone"),
-        # encoder_weights='noisy-student',
+        encoder_weights=None,
         in_channels=3,
         classes=1,
         activation=None
