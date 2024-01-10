@@ -4,7 +4,7 @@
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 import typing
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import os
 
 
