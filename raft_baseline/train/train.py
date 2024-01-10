@@ -54,7 +54,7 @@ if __name__ == '__main__':
     aug = AugmentationTool(conf_loader)
     # dataset
     train_dataset = BucketedDataset(conf_loader=conf_loader, mode="train", aug=aug)
-    valid_dataset = BucketedDataset(conf_loader, mode="val", aug=aug)
+    valid_dataset = RaftDataset(conf_loader, mode="val", aug=aug)
     train_loader = DataLoader(train_dataset, batch_size=conf_loader.attempt_load_param("train_batch_size"),
                               shuffle=True, num_workers=4, pin_memory=True, collate_fn=my_collate, drop_last=True)
     valid_loader = DataLoader(valid_dataset, batch_size=conf_loader.attempt_load_param("val_batch_size"),
