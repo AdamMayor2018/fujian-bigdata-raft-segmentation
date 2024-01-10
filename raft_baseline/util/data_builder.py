@@ -119,7 +119,7 @@ class RaftTileDataset(Dataset):
         self.image = F.pad(self.image, (pad_left, pad_right, pad_top, pad_bottom), mode='reflect').numpy().astype(np.uint8).transpose((1, 2, 0))
         self.mask = F.pad(self.mask, (pad_left, pad_right, pad_top, pad_bottom), mode='reflect').numpy().astype(np.uint8).transpose((1, 2, 0))
         self.pad_h, self.pad_w, _ = self.image.shape
-        self.result_blank = np.ones((self.pad_h, self.pad_w, 3)).astype(np.uint8) * 255
+       #self.result_blank = np.ones((self.pad_h, self.pad_w, 3)).astype(np.uint8) * 255
         # self.num_h = self.pad_h // (self.tile_size - self.overlap_size)  # 横着有多少块
         # self.num_w = self.pad_w // (self.tile_size - self.overlap_size)  # 竖着有多少块
         # self.num_h += 1 if (self.pad_h % self.tile_size) != 0 else self.num_h
@@ -177,8 +177,8 @@ if __name__ == '__main__':
             pair = dataset[i]
             image = pair["img"]
             mask = pair["mask"]
-            # if mask.sum() == 0:
-            #     continue
+            if image.sum() == 0:
+                continue
             # if (mask == 0).sum() / mask.size > 0.9:
             #     continue
             image = Image.fromarray(image)
@@ -196,8 +196,8 @@ if __name__ == '__main__':
             pair = dataset[i]
             image = pair["img"]
             mask = pair["mask"]
-            # if mask.sum() == 0:
-            #     continue
+            if image.sum() == 0:
+                continue
             # if (mask == 0).sum() / mask.size > 0.9:
             #     continue
             #print(image.shape, mask.shape)
