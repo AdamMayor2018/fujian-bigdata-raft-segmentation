@@ -179,8 +179,8 @@ if __name__ == '__main__':
             mask = pair["mask"]
             if image.sum() == 0:
                 continue
-            # if (mask == 0).sum() / mask.size > 0.9:
-            #     continue
+            if (mask == 0).sum() / mask.size > 0.9:
+                continue
             image = Image.fromarray(image)
             mask = Image.fromarray(mask.squeeze(-1))
             mask = mask.convert("L")
@@ -198,8 +198,8 @@ if __name__ == '__main__':
             mask = pair["mask"]
             if image.sum() == 0:
                 continue
-            # if (mask == 0).sum() / mask.size > 0.9:
-            #     continue
+            if (mask == 0).sum() / mask.size > 0.9:
+                continue
             #print(image.shape, mask.shape)
             image = Image.fromarray(image)
             mask = Image.fromarray(mask.squeeze(-1))

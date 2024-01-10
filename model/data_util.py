@@ -17,8 +17,6 @@ Image.MAX_IMAGE_PIXELS = None
 from transform import AugmentationTool
 import numpy as np
 import torch
-import cv2
-import os
 
 
 class RaftInferExpansionDataset(Dataset):

@@ -23,7 +23,7 @@ device: 'cuda:6'
 train_batch_size: 16
 val_batch_size: 16
 num_epochs: 50
-backbone_name: 'seresnext101'
+backbone: 'resnet50'
 pretrained: False
 pretrained_path: None
 dice_threshold: 0.5
@@ -33,7 +33,7 @@ model_params:
   clf_threshold: None
   load_backbone_weights: True
 optim_params:
-  lr: 0.00002
+  lr: 0.00001
   betas:  (0.9, 0.999)
   weight_decay: 0.0005
 lr_scheduler_name: 'ReduceLROnPlateau'
@@ -45,3 +45,11 @@ sched_params:
 result_csv_path: '/data/cx/datasets/fujian_gis_data/'
 weight_save_path: '/data/cx/competition/fujian_bigdata_GIS_competition/raft_baseline/weights'
 save_best_num: 3 #保留val-loss最低的k个模型
+
+#分桶配置
+bucket_dir: '/data/cx/competition/fujian_bigdata_GIS_competition/raft_baseline/buckets'
+bucket_random_seed: 42
+bucket_count: 5
+min_bucket_size: 50
+min_mask_ratio: 0.1
+shuffle_within_buckets: True

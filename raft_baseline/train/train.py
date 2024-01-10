@@ -6,7 +6,7 @@ import numpy as np
 from tqdm import tqdm
 from raft_baseline.util.common import fix_seed
 from raft_baseline.config.conf_loader import YamlConfigLoader
-from raft_baseline.train.dataset import RaftDataset
+from raft_baseline.train.dataset import RaftDataset, BucketedDataset
 from raft_baseline.train.transform import AugmentationTool
 from torch.utils.data import DataLoader
 from torch import nn, optim
@@ -53,8 +53,8 @@ if __name__ == '__main__':
     # augmentation
     aug = AugmentationTool(conf_loader)
     # dataset
-    train_dataset = RaftDataset(conf_loader=conf_loader, mode="train", aug=aug)
-    valid_dataset = RaftDataset(conf_loader, mode="val", aug=aug)
+    train_dataset = BucketedDataset(conf_loader=conf_loader, mode="train", aug=aug)
+    valid_dataset = BucketedDataset(conf_loader, mode="val", aug=aug)
     train_loader = DataLoader(train_dataset, batch_size=conf_loader.attempt_load_param("train_batch_size"),
                               shuffle=True, num_workers=4, pin_memory=True, collate_fn=my_collate, drop_last=True)
     valid_loader = DataLoader(valid_dataset, batch_size=conf_loader.attempt_load_param("val_batch_size"),
@@ -69,8 +69,8 @@ if __name__ == '__main__':
     #                     clf_threshold=eval(model_params["clf_threshold"]),
     #                     load_weights=model_params["load_backbone_weights"])
     model = smp.DeepLabV3Plus(
-        encoder_name='resnet18',
-        #encoder_weights='noisy-student',
+        encoder_name=conf_loader.attempt_load_param("backbone"),
+        encoder_weights='imagenet',
         in_channels=3,
         classes=1,
         activation=None
