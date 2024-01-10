@@ -102,10 +102,13 @@ class RaftTileDataset(Dataset):
         self.h, self.w = self.image.height, self.image.width
         self.tile_size = self.conf_loader.attempt_load_param('tile_size')
         self.overlap_size = self.conf_loader.attempt_load_param('train_overlap_size') if self.mode == "train" else self.conf_loader.attempt_load_param('val_overlap_size')
-        self.pad_h = self.tile_size - self.h % self.tile_size  # add to whole slide
-        self.pad_w = self.tile_size - self.w % self.tile_size  # add to whole slide
-        self.num_h = (self.h + self.pad_h) // self.tile_size
-        self.num_w = (self.w + self.pad_w) // self.tile_size
+        # self.pad_h = self.tile_size - self.h % self.tile_size  # add to whole slide
+        # self.pad_w = self.tile_size - self.w % self.tile_size  # add to whole slide
+        self.pad_h = (self.tile_size - self.overlap_size) - (self.h - self.overlap_size) % (self.tile_size - self.overlap_size)
+        self.pad_w = (self.tile_size - self.overlap_size) - (self.h - self.overlap_size) % (self.tile_size - self.overlap_size)
+        # self.num_h = (self.h + self.pad_h) // self.tile_size
+        # self.num_w = (self.w + self.pad_w) // self.tile_size
+
         self.image = torch.from_numpy(self.image.read([1, 2, 3])).float()
         self.mask = torch.from_numpy(self.mask.read([1])).float()
         #pad image and mask
@@ -117,10 +120,12 @@ class RaftTileDataset(Dataset):
         self.mask = F.pad(self.mask, (pad_left, pad_right, pad_top, pad_bottom), mode='reflect').numpy().astype(np.uint8).transpose((1, 2, 0))
         self.pad_h, self.pad_w, _ = self.image.shape
         self.result_blank = np.ones((self.pad_h, self.pad_w, 3)).astype(np.uint8) * 255
-        self.num_h = self.pad_h // (self.tile_size - self.overlap_size)  # 横着有多少块
-        self.num_w = self.pad_w // (self.tile_size - self.overlap_size)  # 竖着有多少块
-        self.num_h += 1 if (self.pad_h % self.tile_size) != 0 else self.num_h
-        self.num_w += 1 if (self.pad_w % self.tile_size) != 0 else self.num_w
+        # self.num_h = self.pad_h // (self.tile_size - self.overlap_size)  # 横着有多少块
+        # self.num_w = self.pad_w // (self.tile_size - self.overlap_size)  # 竖着有多少块
+        # self.num_h += 1 if (self.pad_h % self.tile_size) != 0 else self.num_h
+        # self.num_w += 1 if (self.pad_w % self.tile_size) != 0 else self.num_w
+        self.num_h = (self.pad_h - self.overlap_size) // (self.tile_size - self.overlap_size)
+        self.num_w = (self.pad_w - self.overlap_size) // (self.tile_size - self.overlap_size)
 
     def __len__(self):
         return self.num_h * self.num_w
