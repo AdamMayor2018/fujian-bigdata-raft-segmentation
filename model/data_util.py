@@ -23,7 +23,7 @@ import torch
 
 class RaftInferExpansionDataset(Dataset):
     def __init__(self, file_path, conf_loader: YamlConfigLoader, aug: AugmentationTool):
-        self.image = np.array(Image.open(file_path)).astype(np.float32).transpose((2, 0, 1))
+        self.image = np.array(Image.open(file_path), dtype=np.uint8).transpose((2, 0, 1))
         self.image = torch.from_numpy(self.image)
         self.transform = aug.get_transforms_valid()
         # print(self.image.shape)

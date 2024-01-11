@@ -22,8 +22,8 @@ val_height: 512 #预测高度尺寸 预测预处理的的时候会被resize到�
 device: 'cuda:6'
 train_batch_size: 16
 val_batch_size: 16
-num_epochs: 50
-backbone: 'resnet50'
+num_epochs: 80
+backbone: 'resnext50_32x4d'
 pretrained: False
 pretrained_path: None
 dice_threshold: 0.5

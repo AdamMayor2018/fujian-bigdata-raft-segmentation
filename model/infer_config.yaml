@@ -4,7 +4,7 @@ pad_size: 32 #做expansion padding的时候的pad_siz
 
 #推理相关
 
-ratio: 0.5
+ratio: 0.6
 device: 'cuda:0'
 val_batch_size: 16
 backbone: 'resnet50'
