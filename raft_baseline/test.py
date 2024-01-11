@@ -35,7 +35,7 @@ def cut_img(logits, result_mask, padding_size, matting_size, origin_indices):
 def main(to_pred_dir, result_save_path):
     run_py_path = os.path.abspath(__file__)
     model_dir = os.path.dirname(run_py_path)
-    conf_loader = YamlConfigLoader(yaml_path=os.path.join(model_dir, "config", "infer_config.yaml"))
+    conf_loader = YamlConfigLoader(yaml_path=os.path.join(model_dir, "config", "raft_baseline_val_config.yaml"))
     ratio = conf_loader.attempt_load_param("ratio")
     aug = AugmentationTool(conf_loader)
     # model
@@ -89,8 +89,8 @@ def main(to_pred_dir, result_save_path):
 
 
     #! PIL保存
-    # pred = Image.fromarray(result_mask)
-    # pred.save(result_save_path)
+    pred = Image.fromarray(result_mask)
+    pred.save(result_save_path)
 
 
 if __name__ == "__main__":
