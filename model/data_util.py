@@ -23,7 +23,7 @@ import torch
 
 class RaftInferExpansionDataset(Dataset):
     def __init__(self, file_path, conf_loader: YamlConfigLoader, aug: AugmentationTool):
-        self.image = np.array(Image.open(file_path)).astype(np.float32).transpose((2, 0, 1))
+        self.image = np.array(Image.open(file_path), dtype=np.uint8).transpose((2, 0, 1))
         self.image = torch.from_numpy(self.image)
         self.transform = aug.get_transforms_valid()
         # print(self.image.shape)
@@ -34,7 +34,7 @@ class RaftInferExpansionDataset(Dataset):
         # 先计算在原图上下左右都按照expansion尺寸pad一圈之后再进行滑窗
         # pad image
         self.pad_image = F.pad(self.image, (self.pad_size, self.pad_size, self.pad_size, self.pad_size),
-                           mode='reflect').numpy().astype(np.uint8)
+                           mode='constant').numpy().astype(np.uint8)
         # self.result_blank = np.ones((2000 - 2*self.pad_size, 2000 - 2*self.pad_size, 3)).astype(np.uint8) * 255
         # self.height, self.width, _ = self.result_blank.shape
         # self.pad_image = np.ones((2000, 2000, 3)).astype(np.uint8)

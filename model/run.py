@@ -22,13 +22,10 @@ Image.MAX_IMAGE_PIXELS = None
 
 
 def cut_img(logits, result_mask, padding_size, matting_size, origin_indices):
-    if padding_size + matting_size > logits.shape[0]:
-        import pdb;pdb.set_trace()
-    try:
-        new_img = logits[padding_size:padding_size + matting_size, padding_size:padding_size + matting_size]
-        result_mask[origin_indices[1]: origin_indices[3], origin_indices[0]: origin_indices[2]] = new_img
-    except:
-        import pdb;pdb.set_trace()
+    # if padding_size + matting_size > logits.shape[0]:
+    #     result_mask[origin_indices[1]: origin_indices[3], origin_indices[0]: origin_indices[2]] = logits
+    new_img = logits[padding_size:padding_size + matting_size, padding_size:padding_size + matting_size]
+    result_mask[origin_indices[1]: origin_indices[3], origin_indices[0]: origin_indices[2]] = new_img
     return result_mask
 
 
@@ -47,7 +44,8 @@ def main(to_pred_dir, result_save_path):
         activation=None
     )
     if conf_loader.attempt_load_param("pretrained") and conf_loader.attempt_load_param("pretrained_path"):
-        model.load_state_dict(torch.load(os.path.join(model_dir, conf_loader.attempt_load_param("pretrained_path"))))
+        model.load_state_dict(torch.load(os.path.join(model_dir, conf_loader.attempt_load_param("pretrained_path")),
+                                         map_location="cpu"))
     model = model.to("cuda:0")
     model.eval()
     # data
