@@ -1,14 +1,14 @@
 # 用于推理的配置文件
 tile_size: 512
-pad_size: 32 #做expansion padding的时候的pad_siz
+pad_size: 64 #做expansion padding的时候的pad_siz
 
 #推理相关
 
-ratio: 0.6
-device: 'cuda:0'
+ratio: 0.65
+device: 'cuda:4'
 val_batch_size: 16
-backbone: 'resnet50'
+backbone: 'resnext50_32x4d'
 pretrained: True
-pretrained_path: 'model_seed2022_fold0_epoch45_val0.3655_f1_score_0.8274.pth'
+pretrained_path: 'model_seed2022_fold0_epoch54_val0.3349_f1_score_0.8489.pth'
 
 draw: False

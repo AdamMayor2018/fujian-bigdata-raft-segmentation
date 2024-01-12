@@ -3,6 +3,7 @@
 2. https://github.com/liaochengcsu/road_segmentation_pytorch
 3. https://github.com/Molly6/segmentation_shengteng2021
 4. https://github.com/liaochengcsu/awesome-satellite-imagery-datasets
+5. https://zhuanlan.zhihu.com/p/346862877 #BDCI 2020 地块分割champion方案
 
 
 # F1 score对应最好的loss？

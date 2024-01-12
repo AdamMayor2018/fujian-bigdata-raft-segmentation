@@ -38,6 +38,7 @@ def main(to_pred_dir, result_save_path):
     conf_loader = YamlConfigLoader(yaml_path=os.path.join(model_dir, "config", "raft_baseline_val_config.yaml"))
     ratio = conf_loader.attempt_load_param("ratio")
     aug = AugmentationTool(conf_loader)
+    device = conf_loader.attempt_load_param("device")
     # model
     model = smp.DeepLabV3Plus(
         encoder_name=conf_loader.attempt_load_param("backbone"),
@@ -47,8 +48,8 @@ def main(to_pred_dir, result_save_path):
         activation=None
     )
     if conf_loader.attempt_load_param("pretrained") and conf_loader.attempt_load_param("pretrained_path"):
-        model.load_state_dict(torch.load(os.path.join(model_dir, "weights", conf_loader.attempt_load_param("pretrained_path"))))
-    model = model.to("cuda:0")
+        model.load_state_dict(torch.load(os.path.join(model_dir, "best_models","resnext50",  conf_loader.attempt_load_param("pretrained_path"))))
+    model = model.to(device)
     model.eval()
     # data
     pred_imgs_paths = os.listdir(to_pred_dir)
@@ -61,7 +62,7 @@ def main(to_pred_dir, result_save_path):
     with torch.no_grad():
         for i in tqdm(range(len(dataset)), total=int(len(dataset))):
             crop_image, pad_indices, origin_indices = dataset[i]
-            crop_image = crop_image.to("cuda:0")
+            crop_image = crop_image.to(device)
             crop_image = crop_image.unsqueeze(0)
             logits = model.predict(crop_image)
             logits = torch.sigmoid(logits)
@@ -69,9 +70,10 @@ def main(to_pred_dir, result_save_path):
             logits[logits < ratio] = 0
             logits = logits.squeeze(0).squeeze(0).cpu().detach().numpy().astype(np.uint8)
             cut_img(logits, result_mask, dataset.pad_size, dataset.matting_size, origin_indices)
-        # 腐蚀
+
+        # 开运算
         #result_mask = cv2.morphologyEx(result_mask, cv2.MORPH_OPEN, kernel=(3, 3), iterations=3)
-        image_mask = Image.open(os.path.join(to_pred_dir, "..", 'val_mask1.tif'))
+        image_mask = Image.open(os.path.join(to_pred_dir, "..", 'mask2.tif'))
         image_mask = np.array(image_mask)
         image_mask[image_mask >= 1] = 1
         TP = np.sum(np.logical_and(result_mask == 1, image_mask == 1))
@@ -89,8 +91,8 @@ def main(to_pred_dir, result_save_path):
 
 
     #! PIL保存
-    pred = Image.fromarray(result_mask)
-    pred.save(result_save_path)
+    # pred = Image.fromarray(result_mask)
+    # pred.save(result_save_path)
 
 
 if __name__ == "__main__":
