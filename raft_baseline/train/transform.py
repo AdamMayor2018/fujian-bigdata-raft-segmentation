@@ -38,7 +38,7 @@ class AugmentationTool:
                                      brightness_by_max=True, p=0.5),
             HueSaturationValue(hue_shift_limit=30, sat_shift_limit=30,
                                val_shift_limit=0, p=0.5),
-            #
+
             CoarseDropout(max_holes=2,
                           max_height=self.conf_loader.attempt_load_param('train_height') // 4, max_width=self.conf_loader.attempt_load_param("train_width") // 4,
                           min_holes=1,
