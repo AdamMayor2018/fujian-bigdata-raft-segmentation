@@ -22,13 +22,10 @@ Image.MAX_IMAGE_PIXELS = None
 
 
 def cut_img(logits, result_mask, padding_size, matting_size, origin_indices):
-    if padding_size + matting_size > logits.shape[0]:
-        import pdb;pdb.set_trace()
-    try:
-        new_img = logits[padding_size:padding_size + matting_size, padding_size:padding_size + matting_size]
-        result_mask[origin_indices[1]: origin_indices[3], origin_indices[0]: origin_indices[2]] = new_img
-    except:
-        import pdb;pdb.set_trace()
+    # if padding_size + matting_size > logits.shape[0]:
+    #     result_mask[origin_indices[1]: origin_indices[3], origin_indices[0]: origin_indices[2]] = logits
+    new_img = logits[padding_size:padding_size + matting_size, padding_size:padding_size + matting_size]
+    result_mask[origin_indices[1]: origin_indices[3], origin_indices[0]: origin_indices[2]] = new_img
     return result_mask
 
 
@@ -47,7 +44,8 @@ def main(to_pred_dir, result_save_path):
         activation=None
     )
     if conf_loader.attempt_load_param("pretrained") and conf_loader.attempt_load_param("pretrained_path"):
-        model.load_state_dict(torch.load(os.path.join(model_dir, conf_loader.attempt_load_param("pretrained_path")), map_location="cpu"))
+        model.load_state_dict(torch.load(os.path.join(model_dir, conf_loader.attempt_load_param("pretrained_path")),
+                                         map_location="cpu"))
     model = model.to("cuda:0")
     model.eval()
     # data
@@ -69,6 +67,23 @@ def main(to_pred_dir, result_save_path):
             logits[logits < ratio] = 0
             logits = logits.squeeze(0).squeeze(0).cpu().detach().numpy().astype(np.uint8)
             cut_img(logits, result_mask, dataset.pad_size, dataset.matting_size, origin_indices)
+        # image_mask = Image.open(os.path.join(to_pred_dir, 'val_mask1.tif'))
+        # image_mask = np.array(image_mask)
+        # image_mask[image_mask >= 1] = 1
+        # TP = np.sum(np.logical_and(result_mask == 1, image_mask == 1))
+        # FP = np.sum(np.logical_and(result_mask == 1, image_mask == 0))
+        # FN = np.sum(np.logical_and(result_mask == 0, image_mask == 1))
+        # precision = TP / (TP + FP)
+        # recall = TP / (TP + FN)
+        # f1 = 2 * precision * recall / (precision + recall)
+        # print(f1)
+        # plt.subplot(1, 2, 1)
+        # plt.imshow(result_mask)
+        # plt.subplot(1, 2, 2)
+        # plt.imshow(image_mask)
+        # plt.show()
+
+
     #! PIL保存
     pred = Image.fromarray(result_mask)
     pred.save(result_save_path)

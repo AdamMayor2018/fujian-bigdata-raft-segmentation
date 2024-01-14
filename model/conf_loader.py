@@ -9,7 +9,7 @@
 # @配置相关
 from abc import ABCMeta, abstractmethod
 import yaml
-from raft_baseline.util.exception import ParamLoadError
+# from raft_baseline.util.exception import ParamLoadError
 
 
 class BaseConfigLoader(metaclass=ABCMeta):
@@ -26,7 +26,7 @@ class BaseConfigLoader(metaclass=ABCMeta):
         elif param_name in self.config_dict.keys():
             return self.config_dict[param_name]
         else:
-            raise ParamLoadError(param_name)
+            raise Exception("Param 【%s】 load error, check opt and config path." % param_name)
 
 
 class YamlConfigLoader(BaseConfigLoader):
