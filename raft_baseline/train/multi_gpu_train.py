@@ -64,7 +64,7 @@ if __name__ == '__main__':
     aug = AugmentationTool(conf_loader)
     # dataset
     train_dataset = BucketedDataset(conf_loader=conf_loader, mode="train", aug=aug)
-    train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
+    train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset, shuffle=False)
     valid_dataset = RaftDataset(conf_loader, mode="val", aug=aug)
     train_loader = DataLoader(train_dataset, batch_size=conf_loader.attempt_load_param("train_batch_size"),
                               shuffle=False, num_workers=4, pin_memory=True, collate_fn=my_collate, drop_last=True, sampler=train_sampler)
@@ -107,15 +107,15 @@ if __name__ == '__main__':
     # optim_params = {k: eval(v) for k, v in optim_params.items() if type(v) == "str"}
     optimizer = optim.AdamW(model.parameters(), **optim_params)
     sched_params = conf_loader.attempt_load_param("sched_params")
-    for k, v in sched_params.items():
+    for k, v in sched_params[conf_loader.attempt_load_param("lr_scheduler_name")].items():
         if isinstance(v, str):
-            sched_params[k] = eval(v)
+            sched_params[conf_loader.attempt_load_param("lr_scheduler_name")][k] = eval(v)
     if conf_loader.attempt_load_param("lr_scheduler_name") == 'ReduceLROnPlateau':
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, **sched_params)
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, **sched_params['ReduceLROnPlateau'])
     elif conf_loader.attempt_load_param("lr_scheduler_name") == 'CosineAnnealingLR':
-        scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, **sched_params)
+        scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, **sched_params['CosineAnnealingLR'])
     elif conf_loader.attempt_load_param('lr_scheduler_name') == 'StepLR':
-        scheduler = optim.lr_scheduler.StepLR(optimizer, **sched_params)
+        scheduler = optim.lr_scheduler.StepLR(optimizer, **sched_params['StepLR'])
     # grad scaler
     scaler = torch.cuda.amp.GradScaler()
     log_cols = ['epoch', 'lr', 'loss_trn', 'loss_val', 'f1_train', 'f1_val']

@@ -19,10 +19,10 @@ val_width: 512 # 预测宽度尺寸 预测预处理的时候会被resize到这�
 val_height: 512 #预测高度尺寸 预测预处理的的时候会被resize到这一高度
 
 #训练相关
-device: '2,6'
+device: '0,3,4,5'
 train_batch_size: 16
 val_batch_size: 16
-num_epochs: 70
+num_epochs: 80
 backbone: 'resnext50_32x4d'
 pretrained: False
 pretrained_path: None
@@ -33,21 +33,25 @@ model_params:
   clf_threshold: None
   load_backbone_weights: True
 optim_params:
-  lr: 0.000005
+  lr: 0.00001
   betas:  (0.9, 0.999)
   weight_decay: 0.0005
-lr_scheduler_name: 'ReduceLROnPlateau'
+lr_scheduler_name: 'CosineAnnealingLR'
 sched_params:
-  'factor': 0.5
-  'patience': 3
-  'min_lr': 5e-7
-  'verbose': True
-result_csv_path: '/data/cx/datasets/fujian_gis_data/'
-weight_save_path: '/data/cx/competition/fujian_bigdata_GIS_competition/raft_baseline/ddp_weights'
+  CosineAnnealingLR:
+    'T_max': 20
+    'eta_min': 5e-7
+  ReduceLROnPlateau:
+    'factor': 0.75
+    'patience': 5
+    'min_lr': 5e-7
+    'verbose': True
+result_csv_path: '/data/user/zhaozeming/competition/fujian-bigdata-raft-segmentation/raft_baseline/data_result'
+weight_save_path: '/data/user/zhaozeming/competition/fujian-bigdata-raft-segmentation/raft_baseline/ddp_weights'
 save_best_num: 10 #保留val-loss最低的k个模型
 
 #分桶配置
-bucket_dir: '/data/cx/competition/fujian_bigdata_GIS_competition/raft_baseline/buckets'
+bucket_dir: '/data/user/zhaozeming/competition/fujian-bigdata-raft-segmentation/raft_baseline/buckets'
 bucket_random_seed: 42
 bucket_count: 5
 min_bucket_size: 50
