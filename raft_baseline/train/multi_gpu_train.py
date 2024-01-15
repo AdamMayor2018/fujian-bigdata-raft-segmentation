@@ -93,6 +93,7 @@ if __name__ == '__main__':
     if conf_loader.attempt_load_param("pretrained") and conf_loader.attempt_load_param("pretrained_path"):
         model.load_state_dict(torch.load(conf_loader.attempt_load_param("pretrained_path")))
     model = model.to(device)
+    model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
     # critirion optimizer scheduler
     model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[device], output_device=device)
 
