@@ -19,10 +19,10 @@ val_width: 512 # 预测宽度尺寸 预测预处理的时候会被resize到这�
 val_height: 512 #预测高度尺寸 预测预处理的的时候会被resize到这一高度
 
 #训练相关
-device: '2,3,5,7'
+device: '2,6'
 train_batch_size: 16
 val_batch_size: 16
-num_epochs: 50
+num_epochs: 70
 backbone: 'resnext50_32x4d'
 pretrained: False
 pretrained_path: None

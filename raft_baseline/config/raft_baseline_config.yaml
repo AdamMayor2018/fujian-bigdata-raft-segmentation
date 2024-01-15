@@ -19,7 +19,7 @@ val_width: 512 # 预测宽度尺寸 预测预处理的时候会被resize到这�
 val_height: 512 #预测高度尺寸 预测预处理的的时候会被resize到这一高度
 
 #训练相关
-device: 'cuda:4'
+device: 'cuda:7'
 train_batch_size: 16
 val_batch_size: 16
 num_epochs: 70
@@ -39,11 +39,11 @@ optim_params:
 lr_scheduler_name: 'ReduceLROnPlateau'
 sched_params:
   'factor': 0.5
-  'patience': 3
+  'patience': 5
   'min_lr': 5e-7
   'verbose': True
 result_csv_path: '/data/cx/datasets/fujian_gis_data/'
-weight_save_path: '/data/cx/competition/fujian_bigdata_GIS_competition/raft_baseline/ddp_weights'
+weight_save_path: '/data/cx/competition/fujian_bigdata_GIS_competition/raft_baseline/unet_weights'
 save_best_num: 10 #保留val-loss最低的k个模型
 
 #分桶配置

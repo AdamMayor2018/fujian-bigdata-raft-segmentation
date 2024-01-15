@@ -8,7 +8,7 @@ from albumentations import (Compose, HorizontalFlip, VerticalFlip, Rotate, Rando
                             Cutout, CoarseDropout, GaussNoise, ChannelShuffle, ToGray, OpticalDistortion,
                             Normalize, OneOf, NoOp)
 from albumentations.pytorch import ToTensorV2
-from conf_loader import YamlConfigLoader
+from .conf_loader import YamlConfigLoader
 
 MEAN = np.array([0.485, 0.456, 0.406])
 STD = np.array([0.229, 0.224, 0.225])
