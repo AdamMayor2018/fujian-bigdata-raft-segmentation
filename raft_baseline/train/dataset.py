@@ -29,6 +29,10 @@ class BucketedDataset(Dataset):
             if self.mode == "train" else self.conf_loader.attempt_load_param("val_height")
 
         self.bucket_dir = self.conf_loader.attempt_load_param("bucket_dir")
+
+        # check if self.bucket_dir exist, if self.bucket
+        if not os.path.exists(self.bucket_dir): os.makedirs(self.bucket_dir)
+
         self.bucket_count = self.conf_loader.attempt_load_param("bucket_count")
         self.bucket_random_seed = self.conf_loader.attempt_load_param("bucket_random_seed")
         self.min_bucket_size = self.conf_loader.attempt_load_param("min_bucket_size")
@@ -95,8 +99,8 @@ class BucketedDataset(Dataset):
                 (self.data['label_mean'] < bins[i])
                 ].reset_index(drop=True)
 
-        bucketed_data[i] = self.data[
-            (self.data['label_mean'] >= bins[i - 1]) &
+        bucketed_data[i+1] = self.data[
+            (self.data['label_mean'] >= bins[i]) &
             (self.data['label_mean'] <= max_mask_ratio)
             ].reset_index(drop=True)
 
@@ -121,7 +125,7 @@ class BucketedDataset(Dataset):
 
     def save_buckets(self):
         for i, data in self.buckets.items():
-            data[['image_path', 'label_path']].to_csv(f'{self.bucket_dir}/bucket_{i}.csv', index=False)
+            data[['image_path', 'label_path', 'label_mean']].to_csv(f'{self.bucket_dir}/bucket_{i}.csv', index=False)
 
     def read_buckets(self):
         buckets = {}

@@ -127,7 +127,7 @@ if __name__ == '__main__':
 
         logger.info(f"start trainning epoch : {epoch}.")
         logger.info(f"lr: {[group['lr'] for group in optimizer.param_groups]}")
-        train_loader.sampler.set_epoch(epoch)
+
         model.train()
         train_epoch = tqdm(train_loader, total=int(len(train_loader)))
         train_epoch_f1_scores = []
