@@ -17,7 +17,8 @@ import logging
 import segmentation_models_pytorch as smp
 import pandas as pd
 import torch.distributed as dist
-
+import torchmetrics
+from torchsummary import summary
 logger = logging.getLogger('train')
 logger.setLevel("DEBUG")
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -85,6 +86,8 @@ if __name__ == '__main__':
         classes=1,
         activation=None
     )
+    if int(local_rank) == 0:
+        summary(model, (3, resolution[0], resolution[1]), device="cpu")
 
     # load pretrained
     if conf_loader.attempt_load_param("pretrained") and conf_loader.attempt_load_param("pretrained_path"):
@@ -114,12 +117,15 @@ if __name__ == '__main__':
         scheduler = optim.lr_scheduler.StepLR(optimizer, **sched_params['StepLR'])
     # grad scaler
     scaler = torch.cuda.amp.GradScaler()
-    log_cols = ['epoch', 'lr', 'loss_trn', 'loss_val', 'f1_val']
+    log_cols = ['epoch', 'lr', 'loss_trn', 'loss_val', 'f1_train', 'f1_val']
     # save best models
     best_k = conf_loader.attempt_load_param("save_best_num")
     best_scores = np.zeros((best_k, 2))
     best_scores[:, 1] += 1e6
     result_dict = {}
+    train_f1_metric = torchmetrics.classification.BinaryF1Score().to(device)
+    #if int(local_rank) == 0:
+    #val_f1_metric = torchmetrics.classification.BinaryF1Score().to(device)
 
     # train
     record_df = pd.DataFrame(columns=log_cols, dtype=object)
@@ -146,7 +152,6 @@ if __name__ == '__main__':
                 train_batch = inputs.shape[0]
                 logits = model(inputs.to(device, torch.float32, non_blocking=True))
                 y_true = targets.to(device, torch.float32, non_blocking=True)
-                # logger.info(f"{logits.shape}, {y_true.shape}")
                 logits = logits.squeeze(1)
                 #train_batch_loss = criterion(logits, y_true)
                 train_batch_loss = 0.5 * criterion(logits, y_true) + 0.5 * criterion2(logits, y_true)
@@ -157,17 +162,23 @@ if __name__ == '__main__':
                 optimizer.zero_grad()
                 train_epoch_loss += train_batch_loss.item() * train_batch
                 train_cal_sum += train_batch
-                logits = torch.sigmoid(logits).detach().cpu().numpy()
-                logits[logits >= 0.5] = 1
-                logits[logits < 0.5] = 0
+                logits = torch.sigmoid(logits)
+                train_batch_f1_score = train_f1_metric.update(logits, y_true)
+            train_epoch_f1_score = train_f1_metric.compute().cpu().numpy()
+
+
+            # Resetting internal state such that metric ready for new data
+            train_f1_metric.reset()
+                # logits[logits >= 0.5] = 1
+                # logits[logits < 0.5] = 0
                 # batch_train_f1_score = f1_score(targets.flatten().tolist(), logits.flatten().tolist())
                 # np_train_f1_score = cal_np_f1_score(targets.flatten().numpy(), logits.flatten())
                 # train_epoch_f1_scores.append(batch_train_f1_score)
 
-            if int(local_rank) == 0:    # logger.info(f"batch f1 score: {batch_train_f1_score}, np f1 score:{np_train_f1_score}")
+            if int(local_rank) == 0:
                 avg_train_loss = train_epoch_loss  / train_cal_sum
                 # train_epoch_f1_score = sum(train_epoch_f1_scores) / len(train_epoch_f1_scores)
-                logger.info(f"epoch {epoch}, train loss: {avg_train_loss}")
+                logger.info(f"epoch {epoch}, train loss: {avg_train_loss}, train F1_score: {train_epoch_f1_score}")
             # validation
             # del data, loss, logits, y_true, inputs, targets
             if int(local_rank) == 0:
@@ -180,18 +191,6 @@ if __name__ == '__main__':
                     targets = data[1]
                     with torch.no_grad():
                         val_batch = inputs.shape[0]
-                        # if model_params["clf_head"]:
-                        #     y_clf = targets.to(device, torch.float32, non_blocking=True)
-                        #     if model_params["deep_supervision"]:
-                        #         logits, logits_deeps, logits_clf = model(
-                        #             inputs.to(device, torch.float32, non_blocking=True))
-                        #     else:
-                        #         logits, logits_clf = model(inputs.to(device, torch.float32, non_blocking=True))
-                        # else:
-                        #     if model_params["deep_supervision"]:
-                        #         logits, logits_deeps = model(inputs.to(device, torch.float32, non_blocking=True))
-                        #     else:
-                        #         logits = model(inputs.to(device, torch.float32, non_blocking=True))
                         logits = model(inputs.to(device, torch.float32, non_blocking=True))
                         logits = logits.squeeze(1)
                         y_true = targets.to(device, torch.float32, non_blocking=True)
@@ -202,6 +201,7 @@ if __name__ == '__main__':
                         #     f"val batch : {i}, dice_loss: {0.5 * criterion(logits, y_true)}, bce_loss: {0.5 * criterion2(logits, y_true)}")
                         valid_epoch_loss += val_batch_loss.item() * val_batch
                         logits = torch.sigmoid(logits).detach().cpu().numpy()
+                        #val_batch_f1_score = val_f1_metric.update(logits, y_true)
                         logits[logits >= 0.5] = 1
                         logits[logits < 0.5] = 0
                         val_logits_all.extend(logits.flatten().tolist())
@@ -216,9 +216,10 @@ if __name__ == '__main__':
                 avg_val_loss = valid_epoch_loss / len(valid_dataset)
                 scheduler.step(valid_epoch_loss)
                 valid_epoch_f1_score = cal_np_f1_score(np.array(val_targets_all), np.array(val_logits_all))
-                # valid_epoch_f1_score = sum(valid_epoch_f1_scores) / len(valid_epoch_f1_scores)
+                #valid_epoch_f1_score = val_f1_metric.compute()
+                #valid_epoch_f1_score = sum(valid_epoch_f1_scores) / len(valid_epoch_f1_scores)
                 logger.info(f"epoch {epoch}, val loss: {avg_val_loss}, valid F1_score： {valid_epoch_f1_score}")
-
+                #val_f1_metric.reset()
                 # save topk val loss model weights
                 save_dir = conf_loader.attempt_load_param("weight_save_path")
                 if not os.path.exists(save_dir):
@@ -241,6 +242,7 @@ if __name__ == '__main__':
 
                 record_df.loc[epoch - 1, log_cols] = np.array([epoch,
                                                            [group['lr'] for group in optimizer.param_groups],
-                                                           avg_train_loss, avg_val_loss,
+                                                           avg_train_loss, avg_val_loss, train_epoch_f1_score,
                                                             valid_epoch_f1_score], dtype='object')
     record_df.to_csv(conf_loader.attempt_load_param("result_csv_path") + f'log_seed{seed}_ddp_result.csv', index=False)
+    #dist.destroy_process_group()
