@@ -52,7 +52,11 @@ def main(to_pred_dir, result_save_path):
         activation=None
     )
     if conf_loader.attempt_load_param("pretrained") and conf_loader.attempt_load_param("pretrained_path"):
-        model.load_state_dict(torch.load(os.path.join(model_dir, "best_models", "resnext50_dice_linear",  conf_loader.attempt_load_param("pretrained_path"))))
+        try:
+            model.load_state_dict(torch.load(os.path.join(model_dir, "ddp_weights",  conf_loader.attempt_load_param("pretrained_path"))))
+        except Exception as e:
+            model.load_state_dict({k.replace('module.', ''): v for k, v in
+                           torch.load(os.path.join(model_dir, "ddp_weights",  conf_loader.attempt_load_param("pretrained_path"))).items()})
     summary(model, input_size=(3, 512, 512), device="cpu")
     model = model.to(device)
     model.eval()
