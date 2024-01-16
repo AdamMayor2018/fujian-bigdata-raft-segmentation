@@ -43,6 +43,7 @@ def cal_np_f1_score(targets, logits):
 def my_collate(batch):
     inputs = torch.stack([data["image"] for data in batch])
     targets = torch.stack([data["mask"] for data in batch])
+    # info = [data["info"] for data in batch]
     return inputs, targets
 
 
@@ -150,6 +151,9 @@ if __name__ == '__main__':
             for i, data in enumerate(train_epoch):
                 inputs = data[0]
                 targets = data[1]
+
+                # info = data[2]
+                # import pdb;pdb.set_trace()
                 train_batch = inputs.shape[0]
                 logits = model(inputs.to(device, torch.float32, non_blocking=True))
                 y_true = targets.to(device, torch.float32, non_blocking=True)

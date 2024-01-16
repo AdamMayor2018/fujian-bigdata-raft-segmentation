@@ -33,17 +33,17 @@ model_params:
   clf_threshold: None
   load_backbone_weights: True
 optim_params:
-  lr: 0.00001
+  lr: 0.000005
   betas:  (0.9, 0.999)
   weight_decay: 0.0005
-lr_scheduler_name: 'CosineAnnealingLR'
+lr_scheduler_name: 'ReduceLROnPlateau'
 sched_params:
   CosineAnnealingLR:
     'T_max': 20
     'eta_min': 5e-7
   ReduceLROnPlateau:
-    'factor': 0.75
-    'patience': 5
+    'factor': 0.5
+    'patience': 3
     'min_lr': 5e-7
     'verbose': True
 result_csv_path: '/data/user/zhaozeming/competition/fujian-bigdata-raft-segmentation/raft_baseline/data_result'
@@ -53,7 +53,7 @@ save_best_num: 10 #保留val-loss最低的k个模型
 #分桶配置
 bucket_dir: '/data/user/zhaozeming/competition/fujian-bigdata-raft-segmentation/raft_baseline/buckets'
 bucket_random_seed: 42
-bucket_count: 5
+bucket_count: 3
 min_bucket_size: 50
 min_mask_ratio: 0.1
 shuffle_within_buckets: True
