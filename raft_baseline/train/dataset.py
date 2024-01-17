@@ -14,6 +14,7 @@ import torch
 import torch.nn.functional as F
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 Image.MAX_IMAGE_PIXELS = None
+import random
 
 
 class BucketedDataset(Dataset):
@@ -39,7 +40,7 @@ class BucketedDataset(Dataset):
         self.min_bucket_size = self.conf_loader.attempt_load_param("min_bucket_size")
         self.min_mask_ratio = self.conf_loader.attempt_load_param("min_mask_ratio")
         self.shuffle_within_buckets = self.conf_loader.attempt_load_param("shuffle_within_buckets")
-        np.random.seed(self.bucket_random_seed)
+        # np.random.seed(self.bucket_random_seed)
 
         self.images = glob(opj(self.data_dir, "images", "*.jpg"))
 
@@ -145,6 +146,7 @@ class BucketedDataset(Dataset):
         return bucket_size
 
     def __getitem__(self, idx):
+        torch.manual_seed(idx)
         bucket_id = (idx // int(self.world_size)) % self.bucket_num
         # print("idx:", idx, "local_rank:", os.environ['LOCAL_RANK'], "bucket_id:", bucket_id, '\n')
         # 获取桶id
@@ -174,7 +176,7 @@ class BucketedDataset(Dataset):
                                        mask=mask.astype(np.uint8))
             img = augmented['image']
             mask = augmented['mask']
-        return {'image': img, 'mask': mask}
+        return {'image': img, 'mask': mask, 'info': 'idx:' +str(idx) + 'bucket: ' + str(bucket_id) + 'local:' + img_path}
 
     def __getbuckets__(self):
         return self.buckets

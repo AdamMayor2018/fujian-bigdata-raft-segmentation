@@ -43,7 +43,7 @@ sched_params:
     'eta_min': 5e-7
   ReduceLROnPlateau:
     'factor': 0.5
-    'patience': 3
+    'patience': 2
     'min_lr': 5e-7
     'verbose': True
 result_csv_path: '/data/user/zhaozeming/competition/fujian-bigdata-raft-segmentation/raft_baseline/data_result'

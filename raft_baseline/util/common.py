@@ -13,7 +13,7 @@ import time
 
 def fix_seed(seed):
     random.seed(seed)
-    torch.manual_seed(seed)
+    # torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
     np.random.seed(seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
