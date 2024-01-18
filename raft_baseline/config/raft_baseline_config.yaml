@@ -46,10 +46,10 @@ result_csv_path: '/data/cx/datasets/fujian_gis_data/'
 weight_save_path: '/data/cx/competition/fujian_bigdata_GIS_competition/raft_baseline/unet_weights'
 save_best_num: 10 #保留val-loss最低的k个模型
 
-#分桶配置
-bucket_dir: '/data/cx/competition/fujian_bigdata_GIS_competition/raft_baseline/buckets'
-bucket_random_seed: 42
-bucket_count: 5
-min_bucket_size: 50
-min_mask_ratio: 0.1
-shuffle_within_buckets: True
+#随机平衡采样配置
+bucket_dir: './buckets'
+sample_dir: './samples'
+bucket_multiplier: 20
+bucket_num_max: 4
+min_bucket_size: 10
+reset_bucket: True

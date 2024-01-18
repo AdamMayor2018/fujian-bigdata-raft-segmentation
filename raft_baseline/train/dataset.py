@@ -10,12 +10,176 @@ from glob import glob
 from model.transform import AugmentationTool
 import pandas as pd
 from PIL import Image, ImageFile
+from datetime import datetime
 import torch
 import torch.nn.functional as F
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 Image.MAX_IMAGE_PIXELS = None
 import random
 
+class RandomBalancedSampler(Dataset):
+    def __init__(self, conf_loader: YamlConfigLoader, bucket_path=''):
+
+        self.conf_loader = conf_loader
+
+        self.data_dir = self.conf_loader.attempt_load_param("train_dir")
+        self.bucket_dir = self.conf_loader.attempt_load_param("bucket_dir")
+        self.sample_dir = self.conf_loader.attempt_load_param("sample_dir")
+        self.width = self.conf_loader.attempt_load_param("train_width")
+        self.height = self.conf_loader.attempt_load_param("train_height")
+
+        # check if self.bucket_dir exist, if self.bucket
+        if not os.path.exists(self.bucket_dir): os.makedirs(self.bucket_dir)
+        if not os.path.exists(self.sample_dir): os.makedirs(self.sample_dir)
+
+        self.bucket_multiplier = self.conf_loader.attempt_load_param("bucket_multiplier")
+        self.bucket_num_max = self.conf_loader.attempt_load_param("bucket_num_max")
+        self.min_bucket_size = self.conf_loader.attempt_load_param("min_bucket_size")
+        self.reset_bucket = self.conf_loader.attempt_load_param("reset_bucket")
+
+        self.images = glob(opj(self.data_dir, "images", "*.jpg"))
+
+        if self.reset_bucket:
+            self.bucket = self.create_bucket()
+            self.save_bucket()
+        else:
+            self.bucket = self.read_bucket(bucket_path)
+
+        self.describe_distribution(self.bucket)
+
+    def _to_np(self, image_path, gray=False):
+        if not gray:
+            image = cv2.imread(image_path)
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            h, w, c = image.shape
+        else:
+            image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+            h, w = image.shape
+
+        # 如果尺寸和配置不通进行缩放
+        if h != self.height or w != self.width:
+            image = cv2.resize(image, (self.width, self.height), interpolation=cv2.INTER_AREA)
+
+        if gray: image[image != 0] = 1
+
+        return image
+
+    def create_bucket(self, filter=True):
+        data = pd.DataFrame()
+
+        data['image_path'] = self.images
+        data['label_path'] = data['image_path'].apply(lambda x: opj(self.data_dir, "labels", os.path.basename(x)))
+        data['image'] = data['image_path'].apply(lambda x: self._to_np(x))
+        data['label'] = data['label_path'].apply(lambda x: self._to_np(x, True))
+        data['label_mean'] = data['label'].apply(lambda x: x.mean())
+
+        data['bucket_id'] = np.round(data['label_mean'] * self.bucket_multiplier).astype(int)
+        data['bucket_id'] = data['bucket_id'].apply(lambda x: self.bucket_num_max if x >= self.bucket_num_max else x)
+        data['is_masked'] = data['bucket_id'].apply(lambda x: 0 if x == 0 else 1)
+
+        if filter: data = data.groupby('bucket_id').filter(lambda x: len(x) >= self.min_bucket_size)
+
+        return data[['image_path', 'label_path', 'label_mean', 'bucket_id', 'is_masked']]
+
+    def sample(self, frac=0, save=False):
+
+        samples = self.bucket.copy()
+
+        # decide number of sample
+        if frac == 0:
+            n_sample = samples['is_masked'].value_counts().min()
+        else:
+            n_sample = int(len(samples) * frac)
+
+        n_sample_masked = int(samples[samples['is_masked'] == 1]['bucket_id'].value_counts().mean())
+
+        # sample process
+        samples = samples.groupby('is_masked').sample(n=n_sample, replace=True)
+        samples_background = samples[samples['is_masked'] == 0]
+        samples_masked = samples[samples['is_masked'] == 1].groupby('bucket_id').sample(n=n_sample_masked, replace=True)
+
+        # get_res
+        samples = pd.concat([samples_background, samples_masked], axis=0, ignore_index=True)
+
+        if save:
+            time_str = datetime.now().strftime("%H%M%S")
+            samples.to_csv(f'{self.sample_dir}/sample_{time_str}.csv', index=False)
+
+        return samples
+
+
+    def describe_distribution(self, data):
+        target = data
+        print('Distribution Description:')
+        print('-shape:', target.shape)
+        print('-masked_number:', len(target[target['is_masked'] == 1]))
+        print('-average_masked_ratio:', target[target['is_masked'] == 1]['label_mean'].mean())
+        print('-background_number:',len(target[target['is_masked'] == 0]))
+        print('-background_ratio:', round(len(target[target['is_masked'] == 0]) / len(target), 2))
+        bucket_sizes = target.groupby('bucket_id').size()
+        bucket_sizes_df = bucket_sizes.reset_index(name='size')
+        for i, row in bucket_sizes_df.iterrows():
+            bucket_id = row['bucket_id']
+            size = row['size']
+            print(f'--bucket_{bucket_id}_size: {size}')
+
+    def save_bucket(self):
+        time_str = datetime.now().strftime("%H%M%S")
+        self.bucket.to_csv(f'{self.bucket_dir}/bucket_{time_str}.csv', index=False)
+
+    def read_bucket(self, path):
+
+        if not path:
+            try:
+                buckets = glob(opj(self.bucket_dir, "*.csv"))
+                if not buckets:
+                    raise ValueError(f'no csv file found in {self.bucket_dir}')
+            except ValueError as e:
+                print(f'Error: {e}')
+
+            bucket_path = sorted(buckets, reverse=True)[0]
+            self.bucket = pd.read_csv(bucket_path, index=False)
+        else:
+            self.bucket = pd.read_csv(path, index=False)
+
+    def get_bucket(self):
+        return self.bucket
+
+    def shuffle(self):
+        self.bucket = self.bucket.sample(frac=1, replace=True)
+
+class RaftTrainDataset(Dataset):
+    def __init__(self, conf_loader: YamlConfigLoader, aug, dataset):
+        self.conf_loader = conf_loader
+        self.dataset = dataset
+        self.transform = aug.get_transforms_train()
+        self.width = self.conf_loader.attempt_load_param("train_width")
+        self.height = self.conf_loader.attempt_load_param("train_height")
+
+    def __getitem__(self, idx):
+        img_path = self.dataset["image_path"][idx]
+        label_path = self.dataset["label_path"][idx]
+        bucket_id = self.dataset["bucket_id"][idx]
+        #print(img_path, label_path)
+        img = cv2.imread(img_path)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        mask = cv2.imread(label_path, cv2.IMREAD_GRAYSCALE)
+        h, w, c = img.shape
+        # 如果尺寸和配置不通进行缩放
+        if h != self.height or w != self.width:
+            img = cv2.resize(img, (self.width, self.height), interpolation=cv2.INTER_AREA)
+            mask = cv2.resize(mask, (self.width, self.height), interpolation=cv2.INTER_AREA)
+        # 原图给二值化的1对应其他值
+        mask[mask != 0] = 1
+        if self.conf_loader.attempt_load_param("transform") and self.transform:
+            augmented = self.transform(image=img.astype(np.uint8),
+                                       mask=mask.astype(np.uint8))
+            img = augmented['image']
+            mask = augmented['mask']
+        return {'image': img, 'mask': mask, 'info': "bucket_id:" + str(bucket_id)+" img_path:" + img_path}
+
+    def __len__(self):
+        return len(self.dataset)
 
 class BucketedDataset(Dataset):
     def __init__(self, conf_loader: YamlConfigLoader, mode: str, aug: AugmentationTool):
