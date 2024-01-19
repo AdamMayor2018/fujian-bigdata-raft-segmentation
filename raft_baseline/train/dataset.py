@@ -37,7 +37,7 @@ class RandomBalancedSampler(Dataset):
         self.min_bucket_size = self.conf_loader.attempt_load_param("min_bucket_size")
         self.reset_bucket = self.conf_loader.attempt_load_param("reset_bucket")
 
-        self.images = glob(opj(self.data_dir, "images", "*.jpg"))
+        self.images = glob(opj(self.data_dir, "images", "*.png"))
 
         if self.reset_bucket:
             self.bucket = self.create_bucket()
@@ -206,7 +206,7 @@ class BucketedDataset(Dataset):
         self.shuffle_within_buckets = self.conf_loader.attempt_load_param("shuffle_within_buckets")
         # np.random.seed(self.bucket_random_seed)
 
-        self.images = glob(opj(self.data_dir, "images", "*.jpg"))
+        self.images = glob(opj(self.data_dir, "images", "*.png"))
 
         if 'bucket_0.csv' not in os.listdir(self.bucket_dir):
             self.data = self.create_data()
@@ -357,7 +357,7 @@ class RaftDataset(Dataset):
         self.mode = mode
         self.data_dir = conf_loader.attempt_load_param("train_dir") \
             if self.mode == "train" else conf_loader.attempt_load_param("val_dir")
-        images = glob(opj(self.data_dir, "images", "*.jpg"))
+        images = glob(opj(self.data_dir, "images", "*.png"))
         # self.pairs = {"images:": [], "labels": []}
         self.pairs = defaultdict(list)
         for path in images:

@@ -38,17 +38,17 @@ optim_params:
   weight_decay: 0.0005
 lr_scheduler_name: 'ReduceLROnPlateau'
 sched_params:
-  'factor': 0.5
-  'patience': 5
+  'factor': 0.75
+  'patience': 4
   'min_lr': 5e-7
   'verbose': True
-result_csv_path: '/data/cx/datasets/fujian_gis_data/'
-weight_save_path: '/data/cx/competition/fujian_bigdata_GIS_competition/raft_baseline/unet_weights'
-save_best_num: 10 #保留val-loss最低的k个模型
+result_csv_path: '/data/user/zhaozeming/competition/fujian-bigdata-raft-segmentation/raft_baseline/data_result'
+weight_save_path: '/data/user/zhaozeming/competition/fujian-bigdata-raft-segmentation/raft_baseline/ddp_weights'
+save_best_num: 20 #保留val-loss最低的k个模型
 
 #随机平衡采样配置
-bucket_dir: './buckets'
-sample_dir: './samples'
+bucket_dir: './buckets_s'
+sample_dir: './samples_s'
 bucket_multiplier: 20
 bucket_num_max: 4
 min_bucket_size: 10

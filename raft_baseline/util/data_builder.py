@@ -184,8 +184,8 @@ if __name__ == '__main__':
             image = Image.fromarray(image)
             mask = Image.fromarray(mask.squeeze(-1))
             mask = mask.convert("L")
-            image.save(opj(f"{train_dir}", "images", f"train_{j}_{i}.jpg"))
-            mask.save(opj(f"{train_dir}", "labels", f"train_{j}_{i}.jpg"))
+            image.save(opj(f"{train_dir}", "images", f"train_{j}_{i}.png"))
+            mask.save(opj(f"{train_dir}", "labels", f"train_{j}_{i}.png"))
         #plt.imsave(f"tile_show_{i}.jpg", dataset.result_blank)
 
     for j, i_path in enumerate(val_raw_img_paths):
@@ -198,10 +198,10 @@ if __name__ == '__main__':
             mask = pair["mask"]
             if image.sum() == 0:
                 continue
-            if (mask == 0).sum() / mask.size > 0.9:
-                continue
+            # if (mask == 0).sum() / mask.size > 0.9:
+            #     continue
             #print(image.shape, mask.shape)
             image = Image.fromarray(image)
             mask = Image.fromarray(mask.squeeze(-1))
-            image.save(opj(f"{val_dir}", "images", f"val_{j}_{i}.jpg"))
-            mask.save(opj(f"{val_dir}", "labels", f"val_{j}_{i}.jpg"))
+            image.save(opj(f"{val_dir}", "images", f"val_{j}_{i}.png"))
+            mask.save(opj(f"{val_dir}", "labels", f"val_{j}_{i}.png"))

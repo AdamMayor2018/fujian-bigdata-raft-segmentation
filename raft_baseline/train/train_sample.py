@@ -111,7 +111,7 @@ if __name__ == '__main__':
     # save best models
     best_k = conf_loader.attempt_load_param("save_best_num")
     best_scores = np.zeros((best_k, 2))
-    best_scores[:, 1] += 1e6
+    best_scores[:, 1] += 0
     result_dict = {}
     # train
     record_df = pd.DataFrame(columns=log_cols, dtype=object)
@@ -246,16 +246,16 @@ if __name__ == '__main__':
             weight_save_path = opj(save_dir,
                                    f'model_seed{seed}_fold0_epoch{epoch}_val{round(avg_val_loss, 4)}_f1_score_{round(valid_epoch_f1_score, 4)}.pth')
             result_dict[epoch] = weight_save_path
-            if avg_val_loss < best_scores[-1, 1]:
+            if valid_epoch_f1_score > best_scores[-1, 1]:
                 # topk
                 torch.save(model.state_dict(), weight_save_path)  # save
                 prepare_del = best_scores[-1][0]
-                best_scores[-1] = [epoch, round(avg_val_loss, 4)]
+                best_scores[-1] = [epoch, round(valid_epoch_f1_score, 4)]
                 # delete
                 if prepare_del != 0:
                     logger.info(f"delete worse weight: {result_dict[prepare_del]}")
                     os.remove(result_dict[prepare_del])
-            best_scores = best_scores[np.argsort(best_scores[:, 1])]
+            best_scores = best_scores[np.argsort(-best_scores[:, 1])]
             logger.info(f"current best scores: {best_scores}")
 
         record_df.loc[epoch - 1, log_cols] = np.array([epoch,

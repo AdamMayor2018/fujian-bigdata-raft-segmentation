@@ -4,11 +4,11 @@ pad_size: 64 #做expansion padding的时候的pad_siz
 
 #推理相关
 
-ratio: 0.75
+ratio: 0.85
 device: 'cuda:2'
 val_batch_size: 16
 backbone: 'resnext50_32x4d'
 pretrained: True
-pretrained_path: 'model_seed2022_fold0_epoch120_val0.2897_f1_score_0.824.pth'
+pretrained_path: 'model_seed2022_fold0_epoch117_val0.3087_f1_score_0.8249.pth'
 
 draw: False

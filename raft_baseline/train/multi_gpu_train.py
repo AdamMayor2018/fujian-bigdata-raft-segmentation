@@ -109,7 +109,7 @@ if __name__ == '__main__':
 
     # criterion = nn.BCEWithLogitsLoss().to(device)
     criterion = smp.losses.DiceLoss(smp.losses.BINARY_MODE, from_logits=True).to(device)
-    criterion2 = nn.BCEWithLogitsLoss(pos_weight=torch.tensor(3)).to(device)
+    criterion2 = nn.BCEWithLogitsLoss().to(device)
     optim_params = conf_loader.attempt_load_param("optim_params")
     for k, v in optim_params.items():
         if isinstance(v, str):
@@ -132,7 +132,7 @@ if __name__ == '__main__':
     # save best models
     best_k = conf_loader.attempt_load_param("save_best_num")
     best_scores = np.zeros((best_k, 2))
-    best_scores[:, 1] += 1e6
+    best_scores[:, 1] += 0
     result_dict = {}
     train_f1_metric = torchmetrics.classification.BinaryF1Score().to(device)
     #if int(local_rank) == 0:
@@ -267,17 +267,17 @@ if __name__ == '__main__':
                                    f'model_seed{seed}_fold0_epoch{epoch}_val{round(dist_avg_val_loss, 4)}_f1_score_{round(dis_val_epoch_f1_score, 4)}.pth')
             result_dict[epoch] = weight_save_path
 
-            if avg_val_loss.item() < best_scores[-1, 1]:
+            if dis_val_epoch_f1_score > best_scores[-1, 1]:
                 if os.environ['LOCAL_RANK'] == '0':
                     # topk
                     torch.save(model.state_dict(), weight_save_path)  # save
                     prepare_del = best_scores[-1][0]
-                    best_scores[-1] = [epoch, round(avg_val_loss.item(), 4)]
+                    best_scores[-1] = [epoch, round(dis_val_epoch_f1_score, 4)]
                     # delete
                     if prepare_del != 0:
                         logger.info(f"delete worse weight: {result_dict[prepare_del]}")
                         os.remove(result_dict[prepare_del])
-                    best_scores = best_scores[np.argsort(best_scores[:, 1])]
+                    best_scores = best_scores[np.argsort(-best_scores[:, 1])]
                     logger.info(f"current best scores: {best_scores}")
 
                     record_df.loc[epoch - 1, log_cols] = np.array([epoch,
