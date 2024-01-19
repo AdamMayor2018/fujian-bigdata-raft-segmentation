@@ -19,7 +19,6 @@ Image.MAX_IMAGE_PIXELS = None
 class BucketedDataset(Dataset):
     def __init__(self, conf_loader: YamlConfigLoader, mode: str, aug: AugmentationTool):
         self.conf_loader = conf_loader
-        self.world_size = os.environ['WORLD_SIZE'] if 'WORLD_SIZE' in os.environ else 1
         self.mode = mode
         self.data_dir = self.conf_loader.attempt_load_param("train_dir") \
             if self.mode == "train" else conf_loader.attempt_load_param("val_dir")
@@ -41,7 +40,7 @@ class BucketedDataset(Dataset):
         self.shuffle_within_buckets = self.conf_loader.attempt_load_param("shuffle_within_buckets")
         np.random.seed(self.bucket_random_seed)
 
-        self.images = glob(opj(self.data_dir, "images", "*.jpg"))
+        self.images = glob(opj(self.data_dir, "images", "*.png"))
 
         if 'bucket_0.csv' not in os.listdir(self.bucket_dir):
             self.data = self.create_data()
@@ -100,8 +99,8 @@ class BucketedDataset(Dataset):
                 (self.data['label_mean'] < bins[i])
                 ].reset_index(drop=True)
 
-        bucketed_data[i+1] = self.data[
-            (self.data['label_mean'] >= bins[i]) &
+        bucketed_data[i] = self.data[
+            (self.data['label_mean'] >= bins[i - 1]) &
             (self.data['label_mean'] <= max_mask_ratio)
             ].reset_index(drop=True)
 
@@ -145,13 +144,11 @@ class BucketedDataset(Dataset):
         return bucket_size
 
     def __getitem__(self, idx):
-        bucket_id = (idx // int(self.world_size)) % self.bucket_num
-        # print("idx:", idx, "local_rank:", os.environ['LOCAL_RANK'], "bucket_id:", bucket_id, '\n')
         # 获取桶id
-        # if idx == 0:
-        #     bucket_id = 0
-        # else:
-        #     bucket_id = idx % self.bucket_num
+        if idx == 0:
+            bucket_id = 0
+        else:
+            bucket_id = idx % self.bucket_num
         # 获取桶内数据
         samples = self.buckets[bucket_id]
         sample_idx = np.random.choice(samples.index, size=1)[0]
@@ -191,7 +188,7 @@ class RaftDataset(Dataset):
         self.mode = mode
         self.data_dir = conf_loader.attempt_load_param("train_dir") \
             if self.mode == "train" else conf_loader.attempt_load_param("val_dir")
-        images = glob(opj(self.data_dir, "images", "*.jpg"))
+        images = glob(opj(self.data_dir, "images", "*.png"))
         # self.pairs = {"images:": [], "labels": []}
         self.pairs = defaultdict(list)
         for path in images:
@@ -294,8 +291,6 @@ class RaftInferExpansionDataset(Dataset):
             crop_image = self.transform(image=crop_image)["image"]
 
         return crop_image,  [pad_xmin, pad_ymin, pad_xmax, pad_ymax], [orgin_xmin, orgin_ymin, orgin_xmax, orgin_ymax]
-
-
 if __name__ == '__main__':
 
     conf_loader = YamlConfigLoader(yaml_path="../config/raft_baseline_config.yaml")
