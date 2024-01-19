@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 Image.MAX_IMAGE_PIXELS = None
 from torchsummary import summary
-
+from sklearn.metrics import roc_curve
 
 
 
@@ -53,23 +53,30 @@ def main(to_pred_dir, result_save_path):
     )
     if conf_loader.attempt_load_param("pretrained") and conf_loader.attempt_load_param("pretrained_path"):
         try:
-            model.load_state_dict(torch.load(os.path.join(model_dir, "ddp_weights",  conf_loader.attempt_load_param("pretrained_path"))))
+            model.load_state_dict(torch.load(os.path.join(model_dir, "baseline_weights_new",  conf_loader.attempt_load_param("pretrained_path"))))
         except Exception as e:
             model.load_state_dict({k.replace('module.', ''): v for k, v in
-                           torch.load(os.path.join(model_dir, "ddp_weights",  conf_loader.attempt_load_param("pretrained_path"))).items()})
+                           torch.load(os.path.join(model_dir, "baseline_weights_new",  conf_loader.attempt_load_param("pretrained_path"))).items()})
     summary(model, input_size=(3, 512, 512), device="cpu")
     model = model.to(device)
     model.eval()
 
     # data
-    scores = []
+
     pred_imgs_paths = os.listdir(to_pred_dir)
+    mean_f1_scores = []
+    ratios = []
+    # for ratio in range(0, 100, 1):
+    #     scores = []
+    #     ratio = ratio / 100
+    #     ratios.append(ratio)
+    scores = []
     for pred_name in pred_imgs_paths:
         pred_img_path = os.path.join(to_pred_dir, pred_name)
         image = Image.open(pred_img_path)
         image = np.array(image)
         height, width , _ = image.shape
-        result_mask = np.zeros((height, width), dtype=np.uint8)  # ! 结果mask
+        result_mask = np.zeros((height, width), dtype=np.float32)  # ! 结果mask
         dataset = RaftInferExpansionDataset(file_path=pred_img_path, conf_loader=conf_loader, aug=aug)
         with torch.no_grad():
             for i in tqdm(range(len(dataset)), total=int(len(dataset))):
@@ -81,6 +88,7 @@ def main(to_pred_dir, result_save_path):
                 logits[logits >= ratio] = 1
                 logits[logits < ratio] = 0
                 logits = logits.squeeze(0).squeeze(0).cpu().detach().numpy().astype(np.uint8)
+                #logits = logits.squeeze(0).squeeze(0).cpu().detach().numpy()
                 result_mask = cut_img(logits, result_mask, dataset.pad_size, dataset.matting_size, origin_indices)
             # 开运算
             #result_mask = cv2.dilate(result_mask, kernel=(3, 3), iterations=2)
@@ -88,6 +96,12 @@ def main(to_pred_dir, result_save_path):
             image_mask = Image.open(os.path.join(to_pred_dir, "..", f'{pred_name.replace("img", "mask")}'))
             image_mask = np.array(image_mask)
             image_mask[image_mask >= 1] = 1
+            # fpr, tpr, thresholds = roc_curve(image_mask.flatten(), result_mask.flatten(), pos_label=1, sample_weight=None, drop_intermediate=True)
+            # plt.plot(fpr, tpr, marker='o')
+            # plt.show()
+            # from sklearn.metrics import auc
+            # AUC = auc(fpr, tpr)
+            #print(f"{pred_name} fpr: {fpr}, tpr: {tpr}, thresholds: {thresholds}, AUC:{AUC}")
             TP = np.sum(np.logical_and(result_mask == 1, image_mask == 1))
             FP = np.sum(np.logical_and(result_mask == 1, image_mask == 0))
             FN = np.sum(np.logical_and(result_mask == 0, image_mask == 1))
@@ -101,9 +115,12 @@ def main(to_pred_dir, result_save_path):
             plt.subplot(1, 2, 2)
             plt.imshow(image_mask)
             plt.show()
-    print(f"mean f1: {np.mean(scores)}")
+    mean_f1 = np.mean(scores)
+    mean_f1_scores.append(mean_f1)
+    print(f"ratio : {ratio}, mean f1: {mean_f1}")
 
-
+    # plt.plot(ratios, mean_f1_scores, marker='o')
+    # plt.show()
     #! PIL保存
     # pred = Image.fromarray(result_mask)
     # pred.save(result_save_path)

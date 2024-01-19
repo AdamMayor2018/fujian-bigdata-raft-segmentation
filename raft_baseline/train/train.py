@@ -142,19 +142,6 @@ if __name__ == '__main__':
                 inputs = data[0]
                 targets = data[1]
                 train_batch = inputs.shape[0]
-                # if model_params["clf_head"]:
-                #     y_clf = targets.to(device, torch.float32, non_blocking=True)
-                #     if model_params["deep_supervision"]:
-                #         logits, logits_deeps, logits_clf = model(inputs.to(device, torch.float32, non_blocking=True))
-                #     else:
-                #         logits, logits_clf = model(inputs.to(device, torch.float32, non_blocking=True))
-                # else:
-                #     if model_params["deep_supervision"]:
-                #         logits, logits_deeps = model(inputs.to(device, torch.float32, non_blocking=True))
-                #     else:
-                #         logits = model(inputs.to(device, torch.float32, non_blocking=True))
-                # import pdb
-                # pdb.set_trace()
                 logits = model(inputs.to(device, torch.float32, non_blocking=True))
                 y_true = targets.to(device, torch.float32, non_blocking=True)
                 # logger.info(f"{logits.shape}, {y_true.shape}")
@@ -163,6 +150,7 @@ if __name__ == '__main__':
                 train_batch_loss = 0.5 * criterion(logits, y_true) + 0.5 * criterion2(logits, y_true)
                 ##train_batch_loss = (0.5 - epoch / num_epochs * 1/2) * criterion(logits, y_true) + (0.5 + epoch / num_epochs * 1/2) * criterion2(logits, y_true)
                 # logger.info(f"train batch : {i}, dice_loss: {0.5 * criterion(logits, y_true)}, bce_loss: {0.5 * criterion2(logits, y_true)}")
+                #logger.info(f"train batch : {i}, f1 loss: {train_batch_loss}")
                 train_batch_loss.backward()
                 optimizer.step()
                 optimizer.zero_grad()
@@ -192,18 +180,6 @@ if __name__ == '__main__':
                 targets = data[1]
                 with torch.no_grad():
                     val_batch = inputs.shape[0]
-                    # if model_params["clf_head"]:
-                    #     y_clf = targets.to(device, torch.float32, non_blocking=True)
-                    #     if model_params["deep_supervision"]:
-                    #         logits, logits_deeps, logits_clf = model(
-                    #             inputs.to(device, torch.float32, non_blocking=True))
-                    #     else:
-                    #         logits, logits_clf = model(inputs.to(device, torch.float32, non_blocking=True))
-                    # else:
-                    #     if model_params["deep_supervision"]:
-                    #         logits, logits_deeps = model(inputs.to(device, torch.float32, non_blocking=True))
-                    #     else:
-                    #         logits = model(inputs.to(device, torch.float32, non_blocking=True))
                     logits = model(inputs.to(device, torch.float32, non_blocking=True))
                     logits = logits.squeeze(1)
                     y_true = targets.to(device, torch.float32, non_blocking=True)
