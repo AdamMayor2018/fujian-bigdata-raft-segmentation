@@ -1,5 +1,5 @@
 import torch
-from raft_baseline.train.lovaz_loss  import lovasz_hinge
+from raft_baseline.train.lovaz_loss import lovasz_hinge
 
 
 def dice_loss(logits, target):
@@ -35,6 +35,7 @@ def criterion_lovasz_hinge_non_empty(criterion, logits_deep, y):
         loss += lovasz_hinge(logits_deep2[non_empty_idx].view(-1, h, w),
                              y2[non_empty_idx].view(-1, h, w))
         return loss
+
 
 def f1_loss(logits, target):
     logits = torch.sigmoid(logits)

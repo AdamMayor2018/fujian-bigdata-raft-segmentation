@@ -1,18 +1,21 @@
 import os.path
-
+import sys
+sys.path.append("../../")
 import torch
 from os.path import join as opj
 import numpy as np
 from tqdm import tqdm
 from raft_baseline.util.common import fix_seed
 from raft_baseline.config.conf_loader import YamlConfigLoader
-from raft_baseline.train.dataset import RaftDataset, BucketedDataset
+from raft_baseline.train.dataset import RandomBalancedSampler, RaftDataset, RaftTrainDataset
 from raft_baseline.train.transform import AugmentationTool
 from torch.utils.data import DataLoader
 from torch import nn, optim
 import logging
 import segmentation_models_pytorch as smp
 import pandas as pd
+from torchsummary import summary
+
 
 logger = logging.getLogger('train')
 logger.setLevel("DEBUG")
@@ -53,10 +56,8 @@ if __name__ == '__main__':
     # augmentation
     aug = AugmentationTool(conf_loader)
     # dataset
-    train_dataset = BucketedDataset(conf_loader=conf_loader, mode="train", aug=aug)
+    sampler = RandomBalancedSampler(conf_loader)
     valid_dataset = RaftDataset(conf_loader, mode="val", aug=aug)
-    train_loader = DataLoader(train_dataset, batch_size=conf_loader.attempt_load_param("train_batch_size"),
-                              shuffle=True, num_workers=4, pin_memory=True, collate_fn=my_collate, drop_last=True)
     valid_loader = DataLoader(valid_dataset, batch_size=conf_loader.attempt_load_param("val_batch_size"),
                               shuffle=False, num_workers=4, pin_memory=True, collate_fn=my_collate)
     num_epochs = conf_loader.attempt_load_param("num_epochs")
@@ -75,6 +76,8 @@ if __name__ == '__main__':
         classes=1,
         activation=None
     )
+    summary(model, (3, resolution[0], resolution[1]), device="cpu")
+
 
     # load pretrained
     if conf_loader.attempt_load_param("pretrained") and conf_loader.attempt_load_param("pretrained_path"):
@@ -84,6 +87,7 @@ if __name__ == '__main__':
 
     # criterion = nn.BCEWithLogitsLoss().to(device)
     criterion = smp.losses.DiceLoss(smp.losses.BINARY_MODE, from_logits=True).to(device)
+    #criterion2 = smp.losses.SoftBCEWithLogitsLoss().to(device)
     criterion2 = nn.BCEWithLogitsLoss().to(device)
     optim_params = conf_loader.attempt_load_param("optim_params")
     for k, v in optim_params.items():
@@ -107,12 +111,20 @@ if __name__ == '__main__':
     # save best models
     best_k = conf_loader.attempt_load_param("save_best_num")
     best_scores = np.zeros((best_k, 2))
-    best_scores[:, 1] += 1e6
+    best_scores[:, 1] += 0
     result_dict = {}
-
     # train
     record_df = pd.DataFrame(columns=log_cols, dtype=object)
     for epoch in range(1, conf_loader.attempt_load_param("num_epochs") + 1):
+
+        # sampler.shuffle()
+        samples = sampler.sample(frac=0, save=True)
+        sampler.describe_distribution(samples)
+        train_dataset = RaftTrainDataset(conf_loader, aug, samples)
+        train_loader = DataLoader(train_dataset, batch_size=conf_loader.attempt_load_param("train_batch_size"),
+                              shuffle=True, num_workers=4, pin_memory=True, collate_fn=my_collate, drop_last=True)
+
+
         # if epoch == 2:
         #     import pdb
         #     pdb.set_trace()
@@ -125,6 +137,7 @@ if __name__ == '__main__':
 
         logger.info(f"start trainning epoch : {epoch}.")
         logger.info(f"lr: {[group['lr'] for group in optimizer.param_groups]}")
+        #train_loader.sampler.set_epoch(epoch)
         model.train()
         train_epoch = tqdm(train_loader, total=int(len(train_loader)))
         train_epoch_f1_scores = []
@@ -132,6 +145,7 @@ if __name__ == '__main__':
         # FI score container
         with (torch.cuda.amp.autocast()):
             for i, data in enumerate(train_epoch):
+
                 inputs = data[0]
                 targets = data[1]
                 train_batch = inputs.shape[0]
@@ -154,6 +168,7 @@ if __name__ == '__main__':
                 logits = logits.squeeze(1)
                 #train_batch_loss = criterion(logits, y_true)
                 train_batch_loss = 0.5 * criterion(logits, y_true) + 0.5 * criterion2(logits, y_true)
+                ##train_batch_loss = (0.5 - epoch / num_epochs * 1/2) * criterion(logits, y_true) + (0.5 + epoch / num_epochs * 1/2) * criterion2(logits, y_true)
                 # logger.info(f"train batch : {i}, dice_loss: {0.5 * criterion(logits, y_true)}, bce_loss: {0.5 * criterion2(logits, y_true)}")
                 train_batch_loss.backward()
                 optimizer.step()
@@ -231,20 +246,20 @@ if __name__ == '__main__':
             weight_save_path = opj(save_dir,
                                    f'model_seed{seed}_fold0_epoch{epoch}_val{round(avg_val_loss, 4)}_f1_score_{round(valid_epoch_f1_score, 4)}.pth')
             result_dict[epoch] = weight_save_path
-            if avg_val_loss < best_scores[-1, 1]:
+            if valid_epoch_f1_score > best_scores[-1, 1]:
                 # topk
                 torch.save(model.state_dict(), weight_save_path)  # save
                 prepare_del = best_scores[-1][0]
-                best_scores[-1] = [epoch, round(avg_val_loss, 4)]
+                best_scores[-1] = [epoch, round(valid_epoch_f1_score, 4)]
                 # delete
                 if prepare_del != 0:
                     logger.info(f"delete worse weight: {result_dict[prepare_del]}")
                     os.remove(result_dict[prepare_del])
-            best_scores = best_scores[np.argsort(best_scores[:, 1])]
+            best_scores = best_scores[np.argsort(-best_scores[:, 1])]
             logger.info(f"current best scores: {best_scores}")
 
         record_df.loc[epoch - 1, log_cols] = np.array([epoch,
                                                        [group['lr'] for group in optimizer.param_groups],
                                                        avg_train_loss, avg_val_loss,
                                                        train_epoch_f1_score, valid_epoch_f1_score], dtype='object')
-    record_df.to_csv(conf_loader.attempt_load_param("result_csv_path") + f'log_seed{seed}_result.csv', index=False)
+    record_df.to_csv(conf_loader.attempt_load_param("result_csv_path") + f'log_seed{seed}_retrain_result.csv', index=False)
