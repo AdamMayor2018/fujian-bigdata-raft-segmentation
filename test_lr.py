@@ -7,9 +7,9 @@ import cv2
 import matplotlib.pyplot as plt
 import rasterio
 
-mask = Image.open("/data/cx/datasets/fujian_gis_data/val/labels/val_0_120.png")
+mask = Image.open("/data/cx/datasets/fujian_gis_data/train_cnp/labels/train_0_128_cnp.png")
 #mask1 = mask.read(1)
-mask = mask.convert("L")
+#mask = mask.convert("L")
 mask1 = np.array(mask).astype(np.uint8)
 print(set(mask1.flatten().tolist()))
 # mask = Image.open("/data/cx/datasets/fujian_gis_data/val/labels/val_0_120.jpg")

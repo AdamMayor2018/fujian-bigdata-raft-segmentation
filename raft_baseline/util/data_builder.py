@@ -189,66 +189,55 @@ if __name__ == '__main__':
                 continue
             # if (mask == 0).sum() / mask.size > 0.9:
             #     continue
-            if mask.sum() / mask.size > 0.3:
-                masked_imgs.append(opj(f"{train_dir}", "images", f"train_{j}_{i}.png"))
-            if mask.sum() / mask.size == 0:
-                # 纯背景
-                background_imgs.append(opj(f"{train_dir}", "images", f"train_{j}_{i}.png"))
+            # if mask.sum() / mask.size > 0.3:
+            #     masked_imgs.append(opj(f"{train_dir}", "images", f"train_{j}_{i}.png"))
+            # if mask.sum() / mask.size == 0:
+            #     # 纯背景
+            #     background_imgs.append(opj(f"{train_dir}", "images", f"train_{j}_{i}.png"))
             image = Image.fromarray(image)
             mask = Image.fromarray(mask.squeeze(-1))
             mask = mask.convert("L")
             image.save(opj(f"{train_dir}", "images", f"train_{j}_{i}.png"))
             mask.save(opj(f"{train_dir}", "labels", f"train_{j}_{i}.png"))
-            if len(masked_imgs) > 100 and len(background_imgs) > 100:
-                break
         #plt.imsave(f"tile_show_{i}.jpg", dataset.result_blank)
     # step2 执行copy and paste 数据增广
 
-    if copy_and_paste:
-        print("start copy and paste augmentation...")
-        for i, img_path in enumerate(masked_imgs):
-            if random.random() > copy_and_paste_prob:
-                continue
-            print(f"start copy and paste augmentation for {img_path}")
-            foreground_img = np.array(Image.open(img_path))
-            foreground_mask_path = img_path.replace("images", "labels")
-            foreground_mask = np.array(Image.open(foreground_mask_path))
-            background_img_path = random.choice(background_imgs)
-            background_img = np.array(Image.open(background_img_path))
-            background_mask = np.array(Image.open(background_img_path.replace("images", "labels")))
-            mix_img = foreground_img * 0.5 + background_img * 0.5
-            mix_img = mix_img.astype(np.uint8)
-            mix_mask = foreground_mask + background_mask
-            mix_img = Image.fromarray(mix_img)
-            mix_mask = Image.fromarray(mix_mask)
-            mix_img.save(img_path.replace(".png", "_cnp.png"))
-            mix_mask.save(foreground_mask_path.replace(".png", "_cnp.png"))
-
-
-            # h, w, _ = img.shape
-            # bh, bw, _ = background_img.shape
-            # x = random.randint(0, bw - w)
-            # y = random.randint(0, bh - h)
-            # background_img[y: y + h, x: x + w] = img
-            # background_img = Image.fromarray(background_img)
-            # background_img.save(img_path)
+    # if copy_and_paste:
+    #     print("start copy and paste augmentation...")
+    #     for i, img_path in enumerate(masked_imgs):
+    #         if random.random() > copy_and_paste_prob:
+    #             continue
+    #         print(f"start copy and paste augmentation for {img_path}")
+    #         foreground_img = np.array(Image.open(img_path))
+    #         foreground_mask_path = img_path.replace("images", "labels")
+    #         foreground_mask = np.array(Image.open(foreground_mask_path))
+    #         background_img_path = random.choice(background_imgs)
+    #         background_img = np.array(Image.open(background_img_path))
+    #         background_mask = np.array(Image.open(background_img_path.replace("images", "labels")))
+    #         mix_img = foreground_img * 0.5 + background_img * 0.5
+    #         mix_img = mix_img.astype(np.uint8)
+    #         mix_mask = foreground_mask + background_mask
+    #         mix_img = Image.fromarray(mix_img)
+    #         mix_mask = Image.fromarray(mix_mask)
+    #         mix_img.save(img_path.replace(".png", "_cnp.png"))
+    #         mix_mask.save(foreground_mask_path.replace(".png", "_cnp.png"))
 
     # step3 执行验证集基础切图
 
-    # for j, i_path in enumerate(val_raw_img_paths):
-    #     #split_tiffs(i_path, conf_loader)
-    #     dataset = RaftTileDataset(i_path, conf_loader, mode="val")
-    #     for i in range(len(dataset)):
-    #         print(f"making val ({j}_{i}) data pair.")
-    #         pair = dataset[i]
-    #         image = pair["img"]
-    #         mask = pair["mask"]
-    #         if image.sum() == 0:
-    #             continue
-    #         # if (mask == 0).sum() / mask.size > 0.9:
-    #         #     continue
-    #         #print(image.shape, mask.shape)
-    #         image = Image.fromarray(image)
-    #         mask = Image.fromarray(mask.squeeze(-1))
-    #         image.save(opj(f"{val_dir}", "images", f"val_{j}_{i}.png"))
-    #         mask.save(opj(f"{val_dir}", "labels", f"val_{j}_{i}.png"))
+    for j, i_path in enumerate(val_raw_img_paths):
+        #split_tiffs(i_path, conf_loader)
+        dataset = RaftTileDataset(i_path, conf_loader, mode="val")
+        for i in range(len(dataset)):
+            print(f"making val ({j}_{i}) data pair.")
+            pair = dataset[i]
+            image = pair["img"]
+            mask = pair["mask"]
+            if image.sum() == 0:
+                continue
+            # if (mask == 0).sum() / mask.size > 0.9:
+            #     continue
+            #print(image.shape, mask.shape)
+            image = Image.fromarray(image)
+            mask = Image.fromarray(mask.squeeze(-1))
+            image.save(opj(f"{val_dir}", "images", f"val_{j}_{i}.png"))
+            mask.save(opj(f"{val_dir}", "labels", f"val_{j}_{i}.png"))
