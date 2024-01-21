@@ -9,6 +9,6 @@ device: 'cuda:2'
 val_batch_size: 16
 backbone: 'resnext50_32x4d'
 pretrained: True
-pretrained_path: 'model_seed2022_fold0_epoch70_val0.3453_f1_score_0.8692.pth'
+pretrained_path: 'model_seed2022_fold0_epoch86_val0.2386_f1_score_0.8657.pth'
 
 draw: False

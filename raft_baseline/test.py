@@ -76,7 +76,7 @@ def main(to_pred_dir, result_save_path):
         image = Image.open(pred_img_path)
         image = np.array(image)
         height, width , _ = image.shape
-        result_mask = np.zeros((height, width), dtype=np.uint8)  # ! 结果mask
+        result_mask = np.zeros((height, width), dtype=np.float32)  # ! 结果mask
         dataset = RaftInferExpansionDataset(file_path=pred_img_path, conf_loader=conf_loader, aug=aug)
         with torch.no_grad():
             for i in tqdm(range(len(dataset)), total=int(len(dataset))):
@@ -90,24 +90,6 @@ def main(to_pred_dir, result_save_path):
                 logits = logits.squeeze(0).squeeze(0).cpu().detach().numpy().astype(np.uint8)
                 #logits = logits.squeeze(0).squeeze(0).cpu().detach().numpy()
                 result_mask = cut_img(logits, result_mask, dataset.pad_size, dataset.matting_size, origin_indices)
-            # 找到轮廓
-            contours, hierarchy = cv2.findContours(result_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-            # 画轮廓
-            area = []
-            for k in range(len(contours)):
-                area.append(cv2.contourArea(contours[k]))
-            # 轮廓索引
-            print(len(area))
-            max_idx = np.argsort(np.array(area))
-            print(max_idx)
-            #mask = img.copy()
-            # 按轮廓索引填充颜色
-            for idx in max_idx:
-                # 填充轮廓
-                result_mask = cv2.drawContours(result_mask, contours, idx, 1, cv2.FILLED)
-
-
-
             # 开运算
             #result_mask = cv2.dilate(result_mask, kernel=(3, 3), iterations=2)
             #result_mask = cv2.morphologyEx(result_mask, cv2.MORPH_CLOSE, kernel=(3, 3), iterations=2)
