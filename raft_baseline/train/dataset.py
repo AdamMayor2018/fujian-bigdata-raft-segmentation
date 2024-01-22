@@ -310,14 +310,13 @@ class BucketedDataset(Dataset):
         return bucket_size
 
     def __getitem__(self, idx):
-        torch.manual_seed(idx)
-        bucket_id = (idx // int(self.world_size)) % self.bucket_num
+        # bucket_id = (idx // int(self.world_size)) % self.bucket_num
         # print("idx:", idx, "local_rank:", os.environ['LOCAL_RANK'], "bucket_id:", bucket_id, '\n')
         # 获取桶id
-        # if idx == 0:
-        #     bucket_id = 0
-        # else:
-        #     bucket_id = idx % self.bucket_num
+        if idx == 0:
+            bucket_id = 0
+        else:
+            bucket_id = idx % self.bucket_num
         # 获取桶内数据
         samples = self.buckets[bucket_id]
         sample_idx = np.random.choice(samples.index, size=1)[0]

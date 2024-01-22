@@ -10,7 +10,7 @@ import numpy as np
 from tqdm import tqdm
 from raft_baseline.util.common import fix_seed
 from raft_baseline.config.conf_loader import YamlConfigLoader
-from raft_baseline.train.dataset import RandomBalancedSampler, RaftDataset, RaftTrainDataset
+from raft_baseline.train.dataset import RandomBalancedSampler, RaftDataset, RaftTrainDataset,BucketedDataset
 from raft_baseline.train.transform import AugmentationTool
 from torch.utils.data import DataLoader
 from torch import nn, optim
@@ -71,13 +71,13 @@ if __name__ == '__main__':
     # augmentation
     aug = AugmentationTool(conf_loader)
     # dataset
-    # train_dataset = BucketedDataset(conf_loader=conf_loader, mode="train", aug=aug)
-    # train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset, shuffle=True)
-    random_sampler = RandomBalancedSampler(conf_loader)
+    train_dataset = BucketedDataset(conf_loader=conf_loader, mode="train", aug=aug)
+    train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset, shuffle=True)
+    # random_sampler = RandomBalancedSampler(conf_loader)
 
     valid_dataset = RaftDataset(conf_loader, mode="val", aug=aug)
-    # train_loader = DataLoader(train_dataset, batch_size=conf_loader.attempt_load_param("train_batch_size"),
-    #                           shuffle=False, num_workers=4, pin_memory=True, collate_fn=my_collate, drop_last=True, sampler=train_sampler)
+    train_loader = DataLoader(train_dataset, batch_size=conf_loader.attempt_load_param("train_batch_size"),
+                              shuffle=False, num_workers=4, pin_memory=True, collate_fn=my_collate, drop_last=True, sampler=train_sampler)
     valid_loader = DataLoader(valid_dataset, batch_size=conf_loader.attempt_load_param("val_batch_size"),
                               shuffle=False, num_workers=4, pin_memory=True, collate_fn=my_collate)
     num_epochs = conf_loader.attempt_load_param("num_epochs")
@@ -141,12 +141,12 @@ if __name__ == '__main__':
     # train
     record_df = pd.DataFrame(columns=log_cols, dtype=object)
     for epoch in range(1, conf_loader.attempt_load_param("num_epochs") + 1):
-        samples = random_sampler.sample(frac=0, save=True)
-        random_sampler.describe_distribution(samples)
-        train_dataset = RaftTrainDataset(conf_loader, aug, samples)
-        train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset, shuffle=True)
-        train_loader = DataLoader(train_dataset, batch_size=conf_loader.attempt_load_param("train_batch_size"),
-                                  shuffle=False, num_workers=4, pin_memory=True, collate_fn=train_my_collate, drop_last=True, sampler=train_sampler)
+        # samples = random_sampler.sample(frac=0, save=True)
+        # random_sampler.describe_distribution(samples)
+        # train_dataset = RaftTrainDataset(conf_loader, aug, samples)
+        # train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset, shuffle=True)
+        # train_loader = DataLoader(train_dataset, batch_size=conf_loader.attempt_load_param("train_batch_size"),
+        #                           shuffle=False, num_workers=4, pin_memory=True, collate_fn=train_my_collate, drop_last=True, sampler=train_sampler)
 
         train_sampler.set_epoch(epoch)
         train_epoch_loss = 0
