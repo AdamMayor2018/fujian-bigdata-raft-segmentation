@@ -17,12 +17,14 @@ train_width: 512 #训练宽度尺寸 训练预处理会被resize到这一宽度
 train_height: 512 #训练高度尺寸 训练预处理的时候会被resize到这一高度
 val_width: 512 # 预测宽度尺寸 预测预处理的时候会被resize到这一宽度
 val_height: 512 #预测高度尺寸 预测预处理的的时候会被resize到这一高度
+copy_and_paste: True
+copy_and_paste_prob: 0.3
 
 #训练相关
-device: 'cuda:7'
+device: 'cuda:3'
 train_batch_size: 16
 val_batch_size: 16
-num_epochs: 70
+num_epochs: 100
 backbone: 'resnext50_32x4d'
 pretrained: False
 pretrained_path: None
@@ -38,18 +40,25 @@ optim_params:
   weight_decay: 0.0005
 lr_scheduler_name: 'ReduceLROnPlateau'
 sched_params:
-  'factor': 0.75
-  'patience': 4
+  'factor': 0.5
+  'patience': 3
   'min_lr': 5e-7
   'verbose': True
-result_csv_path: '/data/user/zhaozeming/competition/fujian-bigdata-raft-segmentation/raft_baseline/data_result'
-weight_save_path: '/data/user/zhaozeming/competition/fujian-bigdata-raft-segmentation/raft_baseline/ddp_weights'
-save_best_num: 20 #保留val-loss最低的k个模型
+result_csv_path: '/data/cx/competition/fujian_bigdata_GIS_competition/raft_baseline/baseline_panet_weights'
+weight_save_path: '/data/cx/competition/fujian_bigdata_GIS_competition/raft_baseline/baseline_panet_weights'
+save_best_num: 30 #保留val-loss最低的k个模型
 
 #随机平衡采样配置
-bucket_dir: './buckets_s'
-sample_dir: './samples_s'
-bucket_multiplier: 20
-bucket_num_max: 4
-min_bucket_size: 10
-reset_bucket: True
+#bucket_dir: './buckets_s'
+#sample_dir: './samples_s'
+#bucket_multiplier: 20
+#bucket_num_max: 4
+#min_bucket_size: 10
+#reset_bucket: True
+##分桶配置
+bucket_dir: '/data/cx/competition/fujian_bigdata_GIS_competition/raft_baseline/buckets'
+bucket_random_seed: 42
+bucket_count: 5
+min_bucket_size: 50
+min_mask_ratio: 0.1
+shuffle_within_buckets: True

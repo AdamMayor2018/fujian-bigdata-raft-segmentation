@@ -7,7 +7,7 @@ from os.path import join as opj
 from torch.utils.data import Dataset
 from raft_baseline.config.conf_loader import YamlConfigLoader
 from glob import glob
-from model.transform import AugmentationTool
+from raft_baseline.train.transform import AugmentationTool
 import pandas as pd
 from PIL import Image, ImageFile
 from datetime import datetime
@@ -310,7 +310,7 @@ class BucketedDataset(Dataset):
         return bucket_size
 
     def __getitem__(self, idx):
-        # bucket_id = (idx // int(self.world_size)) % self.bucket_num
+        #bucket_id = (idx // int(self.world_size)) % self.bucket_num
         # print("idx:", idx, "local_rank:", os.environ['LOCAL_RANK'], "bucket_id:", bucket_id, '\n')
         # 获取桶id
         if idx == 0:

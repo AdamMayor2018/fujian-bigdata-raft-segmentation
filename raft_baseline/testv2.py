@@ -4,6 +4,7 @@
 # @File : run.py.py
 # @Software: PyCharm
 # @Description: 按照官方要求提供的推理代码
+import copy
 import glob
 
 from raft_baseline.config.conf_loader import YamlConfigLoader
@@ -85,14 +86,41 @@ def main(to_pred_dir, result_save_path):
                 crop_image = crop_image.unsqueeze(0)
                 logits = model.predict(crop_image)
                 logits = torch.sigmoid(logits)
-                logits[logits >= ratio] = 1
-                logits[logits < ratio] = 0
-                logits = logits.squeeze(0).squeeze(0).cpu().detach().numpy().astype(np.uint8)
+                # logits[logits >= ratio] = 1
+                # logits[logits < ratio] = 0
+                logits = logits.squeeze(0).squeeze(0).cpu().detach().numpy()
                 #logits = logits.squeeze(0).squeeze(0).cpu().detach().numpy()
                 result_mask = cut_img(logits, result_mask, dataset.pad_size, dataset.matting_size, origin_indices)
+
+            # 找到轮廓
+            result_mask_binary = copy.deepcopy(result_mask)
+            result_mask_binary[result_mask_binary >= ratio] = 1
+            result_mask_binary[result_mask_binary < ratio] = 0
+            result_mask_binary = result_mask_binary.astype(np.uint8)
+            num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(result_mask_binary, connectivity=8)
+
+            # 查看各个返回值
+            # 连通域数量
+            print('num_labels = ', num_labels)
+            # 连通域的信息：对应各个轮廓的x、y、width、height和面积
+            print('stats = ', stats)
+            # 连通域的中心点
+            print('centroids = ', centroids)
+            # 每一个像素的标签1、2、3.。。，同一个连通域的标签是一致的
+
+            for i in range(1, num_labels):
+                mask = labels == i
+                print(i, " prob avg:", result_mask[mask].sum() / result_mask[mask].size, "mask size: ", result_mask[mask].size)
+                #填平平均置信度低的label都改为0
+                if result_mask[mask].sum() / result_mask[mask].size < 0.8:
+                    result_mask[mask] = 0
+                # 填上小洞
+                if result_mask[mask].size < 100:
+                    result_mask[mask] = 0
+            result_mask[result_mask >= ratio] = 1
+            result_mask[result_mask < ratio] = 0
+
             # 开运算
-            #result_mask = cv2.dilate(result_mask, kernel=(3, 3), iterations=2)
-            #result_mask = cv2.morphologyEx(result_mask, cv2.MORPH_CLOSE, kernel=(3, 3), iterations=2)
             image_mask = Image.open(os.path.join(to_pred_dir, "..", f'{pred_name.replace("img", "mask")}'))
             image_mask = np.array(image_mask)
             image_mask[image_mask >= 1] = 1
