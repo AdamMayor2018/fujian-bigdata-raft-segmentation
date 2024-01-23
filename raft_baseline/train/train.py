@@ -81,8 +81,9 @@ if __name__ == '__main__':
     #                     deep_supervision=model_params["deep_supervision"], clf_head=model_params["clf_head"],
     #                     clf_threshold=eval(model_params["clf_threshold"]),
     #                     load_weights=model_params["load_backbone_weights"])
-    model = smp.DeepLabV3Plus(
+    model = smp.PAN(
         encoder_name=conf_loader.attempt_load_param("backbone"),
+        encoder_output_stride=32,
         encoder_weights='imagenet',
         in_channels=3,
         classes=1,
@@ -129,9 +130,9 @@ if __name__ == '__main__':
     # train
     record_df = pd.DataFrame(columns=log_cols, dtype=object)
     for epoch in range(1, conf_loader.attempt_load_param("num_epochs") + 1):
-        if epoch >= 70:
-            transform = aug.get_transforms_valid()
-            train_dataset.set_transform(transform)
+        # if epoch >= 70:
+        #     transform = aug.get_transforms_valid()
+        #     train_dataset.set_transform(transform)
         # if epoch == 2:
         #     import pdb
         #     pdb.set_trace()
