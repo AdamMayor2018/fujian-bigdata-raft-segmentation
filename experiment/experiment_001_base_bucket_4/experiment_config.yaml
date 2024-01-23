@@ -1,0 +1,7 @@
+experiment_base_path: /data/user/zhaoyizhe/competition/fujian-bigdata-raft-segmentation/experiment
+experiment_name: experiment_001_base_bucket_4
+train_config_path: /data/user/zhaoyizhe/competition/fujian-bigdata-raft-segmentation/raft_baseline/config/raft_baseline_config.yaml
+train_params:
+  bucket_count: 4
+  device: cuda:7
+train_script_path: /data/user/zhaoyizhe/competition/fujian-bigdata-raft-segmentation/raft_baseline/train/train.py

@@ -59,8 +59,6 @@ def setup_trainconfig(train_config, train_params, train_config_copy_path):
     print("\nTrain Configuration:")
     print(train_config)
 
-    return train_config
-
 def train(train_script_path, train_config_path):
 
     train_command = f"python {train_script_path} --config {train_config_path}"
@@ -79,7 +77,7 @@ if __name__ == "__main__":
 
     # 设置实验中的训练因子
     train_params = experiment_config['train_params']
-    train_config = setup_trainconfig(train_config, experiment_config, train_config_path)
+    setup_trainconfig(train_config, train_params, train_config_path)
 
     # 训练
     train_script_path = experiment_config['train_script_path']
