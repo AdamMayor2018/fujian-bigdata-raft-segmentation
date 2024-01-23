@@ -1,0 +1,48 @@
+backbone: resnext50_32x4d
+bucket_count: 4
+bucket_random_seed: 42
+buckets_path: /data/user/zhaoyizhe/competition/fujian-bigdata-raft-segmentation/experiment/experiment_001_base_bucket_4/buckets
+copy_and_paste: true
+copy_and_paste_prob: 0.3
+device: cuda:7
+dice_threshold: 0.5
+lr_scheduler_name: ReduceLROnPlateau
+min_bucket_size: 50
+min_mask_ratio: 0.1
+model_params:
+  clf_head: false
+  clf_threshold: None
+  deep_supervision: false
+  load_backbone_weights: true
+num_epochs: 100
+optim_params:
+  betas: (0.9, 0.999)
+  lr: 5.0e-06
+  weight_decay: 0.0005
+pretrained: false
+pretrained_path: None
+raw_dir: /data/datasets/fujian_gis_data/raw/raw_image
+raw_train_dir: /data/datasets/fujian_gis_data/raw/raw_train
+raw_val_dir: /data/datasets/fujian_gis_data/raw/raw_val
+results_path: /data/user/zhaoyizhe/competition/fujian-bigdata-raft-segmentation/experiment/experiment_001_base_bucket_4/results
+save_best_num: 30
+sched_params:
+  factor: 0.5
+  min_lr: 5e-7
+  patience: 3
+  verbose: true
+shuffle_within_buckets: true
+split_ratio: 0.8
+tile_size: 512
+train_batch_size: 16
+train_dir: /data/datasets/fujian_gis_data/train
+train_height: 512
+train_overlap_size: 256
+train_width: 512
+transform: true
+val_batch_size: 16
+val_dir: /data/datasets/fujian_gis_data/val
+val_height: 512
+val_overlap_size: 0
+val_width: 512
+weights_path: /data/user/zhaoyizhe/competition/fujian-bigdata-raft-segmentation/experiment/experiment_001_base_bucket_4/weights

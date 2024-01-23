@@ -1,9 +1,9 @@
 # 实验配置文件
-experiment_name: 'experiment_001_base_bucket_3'  # 实验名称
+experiment_name: 'experiment_001_base_bucket_4'  # 实验名称
 experiment_base_path: '/data/user/zhaoyizhe/competition/fujian-bigdata-raft-segmentation/experiment'  # 实验基础路径
 train_params:
-  device: 'cuda:6',
-  bucket_count: 3
+  device: 'cuda:7'
+  bucket_count: 4
 # 训练配置文件
 train_config_path: '/data/user/zhaoyizhe/competition/fujian-bigdata-raft-segmentation/raft_baseline/config/raft_baseline_config.yaml'
 train_script_path : '/data/user/zhaoyizhe/competition/fujian-bigdata-raft-segmentation/raft_baseline/train/train.py'

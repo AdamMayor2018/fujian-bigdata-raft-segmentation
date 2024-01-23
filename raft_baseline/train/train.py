@@ -123,7 +123,7 @@ if __name__ == '__main__':
     # save best models
     best_k = conf_loader.attempt_load_param("save_best_num")
     best_scores = np.zeros((best_k, 2))
-    best_scores[:, 1] += 1e6
+    # best_scores[:, 1] += 1e6
     result_dict = {}
     # train
     record_df = pd.DataFrame(columns=log_cols, dtype=object)
