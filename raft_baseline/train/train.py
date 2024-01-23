@@ -58,7 +58,7 @@ if __name__ == '__main__':
     seed = 2022
     fix_seed(seed)
     # load global config
-    config = parse_command_line_args() or "../../config/raft_baseline.yaml"
+    config = parse_command_line_args() or "../config/raft_baseline_config.yaml"
     conf_loader = YamlConfigLoader(yaml_path=config)
     device = conf_loader.attempt_load_param("device")
     device = device if torch.cuda.is_available() else "cpu"
