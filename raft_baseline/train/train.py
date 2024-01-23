@@ -4,6 +4,7 @@ sys.path.append("../../")
 import torch
 from os.path import join as opj
 import numpy as np
+import argparse
 from tqdm import tqdm
 from raft_baseline.util.common import fix_seed
 from raft_baseline.config.conf_loader import YamlConfigLoader
@@ -24,6 +25,14 @@ console_handler = logging.StreamHandler()
 console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
 
+# 使用argparse解析命令行参数
+def parse_command_line_args():
+    parser = argparse.ArgumentParser(description='Path to training config')
+    parser.add_argument('--config', '-c', type=str, default='',
+                        help='Path to the experiment configuration YAML file.')
+
+    args = parser.parse_args()
+    return args.config
 
 def cal_np_f1_score(targets, logits):
     # 计算TP、FP、FN
@@ -49,7 +58,8 @@ if __name__ == '__main__':
     seed = 2022
     fix_seed(seed)
     # load global config
-    conf_loader = YamlConfigLoader(yaml_path="../config/raft_baseline_config.yaml")
+    config = parse_command_line_args() or "../../config/raft_baseline.yaml"
+    conf_loader = YamlConfigLoader(yaml_path=config)
     device = conf_loader.attempt_load_param("device")
     device = device if torch.cuda.is_available() else "cpu"
 
@@ -208,7 +218,7 @@ if __name__ == '__main__':
             logger.info(f"epoch {epoch}, val loss: {avg_val_loss}, valid F1_score： {valid_epoch_f1_score}")
 
             # save topk val loss model weights
-            save_dir = conf_loader.attempt_load_param("weight_save_path")
+            save_dir = conf_loader.attempt_load_param("weights_path")
             if not os.path.exists(save_dir):
                 os.mkdir(save_dir)
             # 小到大排序
@@ -231,4 +241,4 @@ if __name__ == '__main__':
                                                        [group['lr'] for group in optimizer.param_groups],
                                                        avg_train_loss, avg_val_loss,
                                                        train_epoch_f1_score, valid_epoch_f1_score], dtype='object')
-    record_df.to_csv(conf_loader.attempt_load_param("result_csv_path") + f'log_seed{seed}_retrain_result.csv', index=False)
+    record_df.to_csv(conf_loader.attempt_load_param("results_path") + f'log_seed{seed}_retrain_result.csv', index=False)
