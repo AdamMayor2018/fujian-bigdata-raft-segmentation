@@ -350,6 +350,9 @@ class BucketedDataset(Dataset):
     def __len__(self):
         return self.bucket_size * (self.bucket_count + 1)
 
+    def set_transform(self, new_transform):
+        self.transform = new_transform
+
 class RaftDataset(Dataset):
     def __init__(self, conf_loader: YamlConfigLoader, mode: str, aug:AugmentationTool):
         self.conf_loader = conf_loader

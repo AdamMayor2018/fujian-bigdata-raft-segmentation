@@ -114,13 +114,24 @@ def main(to_pred_dir, result_save_path):
                 #填平平均置信度低的label都改为0
                 if result_mask[mask].sum() / result_mask[mask].size < 0.8:
                     result_mask[mask] = 0
-                # 填上小洞
+                # 挖去小点
                 if result_mask[mask].size < 100:
                     result_mask[mask] = 0
             result_mask[result_mask >= ratio] = 1
             result_mask[result_mask < ratio] = 0
 
-            # 开运算
+            #填上小洞
+            reverse_result_mask = 1 - result_mask
+            reverse_result_mask = reverse_result_mask.astype(np.uint8)
+            num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(reverse_result_mask,
+                                                                                    connectivity=8)
+            for i in range(1, num_labels):
+                mask = labels == i
+                # 填上小洞
+                if reverse_result_mask[mask].size < 200:
+                    reverse_result_mask[mask] = 0
+            final_result_mask = 1 - reverse_result_mask
+
             image_mask = Image.open(os.path.join(to_pred_dir, "..", f'{pred_name.replace("img", "mask")}'))
             image_mask = np.array(image_mask)
             image_mask[image_mask >= 1] = 1
@@ -130,16 +141,16 @@ def main(to_pred_dir, result_save_path):
             # from sklearn.metrics import auc
             # AUC = auc(fpr, tpr)
             #print(f"{pred_name} fpr: {fpr}, tpr: {tpr}, thresholds: {thresholds}, AUC:{AUC}")
-            TP = np.sum(np.logical_and(result_mask == 1, image_mask == 1))
-            FP = np.sum(np.logical_and(result_mask == 1, image_mask == 0))
-            FN = np.sum(np.logical_and(result_mask == 0, image_mask == 1))
+            TP = np.sum(np.logical_and(final_result_mask == 1, image_mask == 1))
+            FP = np.sum(np.logical_and(final_result_mask == 1, image_mask == 0))
+            FN = np.sum(np.logical_and(final_result_mask == 0, image_mask == 1))
             precision = TP / (TP + FP)
             recall = TP / (TP + FN)
             f1 = 2 * precision * recall / (precision + recall)
             print(f"{pred_name} f1: {f1}")
             scores.append(f1)
             plt.subplot(1, 2, 1)
-            plt.imshow(result_mask)
+            plt.imshow(final_result_mask)
             plt.subplot(1, 2, 2)
             plt.imshow(image_mask)
             plt.show()

@@ -98,9 +98,10 @@ if __name__ == '__main__':
     # critirion optimizer scheduler
 
     # criterion = nn.BCEWithLogitsLoss().to(device)
+    #criterion = dice_bce_loss_with_logits(device=device).to(device)
     criterion = smp.losses.DiceLoss(smp.losses.BINARY_MODE, from_logits=True).to(device)
-    #criterion2 = smp.losses.SoftBCEWithLogitsLoss().to(device)
-    criterion2 = nn.BCEWithLogitsLoss().to(device)
+    criterion2 = smp.losses.SoftBCEWithLogitsLoss().to(device)
+    #criterion2 = nn.BCEWithLogitsLoss().to(device)
     optim_params = conf_loader.attempt_load_param("optim_params")
     for k, v in optim_params.items():
         if isinstance(v, str):
@@ -123,11 +124,14 @@ if __name__ == '__main__':
     # save best models
     best_k = conf_loader.attempt_load_param("save_best_num")
     best_scores = np.zeros((best_k, 2))
-    # best_scores[:, 1] += 1e6
+    #best_scores[:, 1] += 1e6
     result_dict = {}
     # train
     record_df = pd.DataFrame(columns=log_cols, dtype=object)
     for epoch in range(1, conf_loader.attempt_load_param("num_epochs") + 1):
+        if epoch >= 70:
+            transform = aug.get_transforms_valid()
+            train_dataset.set_transform(transform)
         # if epoch == 2:
         #     import pdb
         #     pdb.set_trace()
@@ -158,6 +162,7 @@ if __name__ == '__main__':
                 logits = logits.squeeze(1)
                 #train_batch_loss = criterion(logits, y_true)
                 train_batch_loss = 0.5 * criterion(logits, y_true) + 0.5 * criterion2(logits, y_true)
+                #train_batch_loss = criterion(logits, y_true)
                 ##train_batch_loss = (0.5 - epoch / num_epochs * 1/2) * criterion(logits, y_true) + (0.5 + epoch / num_epochs * 1/2) * criterion2(logits, y_true)
                 # logger.info(f"train batch : {i}, dice_loss: {0.5 * criterion(logits, y_true)}, bce_loss: {0.5 * criterion2(logits, y_true)}")
                 #logger.info(f"train batch : {i}, f1 loss: {train_batch_loss}")

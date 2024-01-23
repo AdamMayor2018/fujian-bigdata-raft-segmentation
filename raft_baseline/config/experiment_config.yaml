@@ -1,10 +1,11 @@
 # 实验配置文件
-experiment_name: 'experiment_001_base_bucket_4'  # 实验名称
-experiment_base_path: '/data/user/zhaoyizhe/competition/fujian-bigdata-raft-segmentation/experiment'  # 实验基础路径
+experiment_name: 'experiment_001_base_repvgg_b3'  # 实验名称
+experiment_base_path: '/data/cx/competition/fujian_bigdata_GIS_competition/raft_baseline/experiments'  # 实验基础路径
+conda_env_path: '/data/ENTER/envs/video-fingerprint/bin/python'
 train_params:
-  device: 'cuda:7'
-  bucket_count: 4
+  device: 'cuda:2'
+  backbone: 'tu-repvgg_b3'
 # 训练配置文件
-train_config_path: '/data/user/zhaoyizhe/competition/fujian-bigdata-raft-segmentation/raft_baseline/config/raft_baseline_config.yaml'
-train_script_path : '/data/user/zhaoyizhe/competition/fujian-bigdata-raft-segmentation/raft_baseline/train/train.py'
+train_config_path: '/data/cx/competition/fujian_bigdata_GIS_competition/raft_baseline/config/raft_baseline_config.yaml'
+train_script_path : '/data/cx/competition/fujian_bigdata_GIS_competition/raft_baseline/train/train.py'
 

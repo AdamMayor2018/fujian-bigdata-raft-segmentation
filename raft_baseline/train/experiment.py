@@ -59,9 +59,9 @@ def setup_trainconfig(train_config, train_params, train_config_copy_path):
     print("\nTrain Configuration:")
     print(train_config)
 
-def train(train_script_path, train_config_path):
+def train(train_script_path, train_config_path, conda_execute_path):
 
-    train_command = f"python {train_script_path} --config {train_config_path}"
+    train_command = f"{conda_execute_path} {train_script_path} --config {train_config_path}"
     subprocess.run(train_command, shell=True)
 
 
@@ -80,5 +80,6 @@ if __name__ == "__main__":
     setup_trainconfig(train_config, train_params, train_config_path)
 
     # 训练
+    conda_execute_path = experiment_config['conda_env_path']
     train_script_path = experiment_config['train_script_path']
-    train(train_script_path, train_config_path)
+    train(train_script_path, train_config_path, conda_execute_path)
