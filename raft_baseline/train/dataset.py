@@ -23,7 +23,7 @@ class RandomBalancedSampler(Dataset):
         self.conf_loader = conf_loader
 
         self.data_dir = self.conf_loader.attempt_load_param("train_dir")
-        self.bucket_dir = self.conf_loader.attempt_load_param("bucket_dir")
+        self.bucket_dir = self.conf_loader.attempt_load_param("buckets_path")
         self.sample_dir = self.conf_loader.attempt_load_param("sample_dir")
         self.width = self.conf_loader.attempt_load_param("train_width")
         self.height = self.conf_loader.attempt_load_param("train_height")
@@ -194,7 +194,7 @@ class BucketedDataset(Dataset):
         self.height = self.conf_loader.attempt_load_param("train_height") \
             if self.mode == "train" else self.conf_loader.attempt_load_param("val_height")
 
-        self.bucket_dir = self.conf_loader.attempt_load_param("bucket_dir")
+        self.bucket_dir = self.conf_loader.attempt_load_param("buckets_path")
 
         # check if self.bucket_dir exist, if self.bucket
         if not os.path.exists(self.bucket_dir): os.makedirs(self.bucket_dir)

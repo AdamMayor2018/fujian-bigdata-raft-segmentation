@@ -42,26 +42,26 @@ sched_params:
     'T_max': 20
     'eta_min': 5e-7
   ReduceLROnPlateau:
-    'factor': 0.75
-    'patience': 5
+    'factor': 0.5
+    'patience': 3
     'min_lr': 5e-7
     'verbose': True
 result_csv_path: '/data/user/zhaozeming/competition/fujian-bigdata-raft-segmentation/raft_baseline/data_result'
 weight_save_path: '/data/user/zhaozeming/competition/fujian-bigdata-raft-segmentation/raft_baseline/ddp_weights'
-save_best_num: 50 #保留val-loss最低的k个模型
+save_best_num: 30 #保留val-loss最低的k个模型
 
-##分桶配置
-#bucket_dir: '/data/user/zhaozeming/competition/fujian-bigdata-raft-segmentation/raft_baseline/buckets'
-#bucket_random_seed: 42
-#bucket_count: 3
-#min_bucket_size: 50
-#min_mask_ratio: 0.1
-#shuffle_within_buckets: True
-
-#随机平衡采样配置
-bucket_dir: './buckets'
-sample_dir: './samples'
-bucket_multiplier: 20
-bucket_num_max: 4
+#分桶配置
+bucket_dir: '/data/user/zhaozeming/competition/fujian-bigdata-raft-segmentation/raft_baseline/buckets'
+bucket_random_seed: 42
+bucket_count: 5
 min_bucket_size: 10
-reset_bucket: True
+min_mask_ratio: 0.1
+shuffle_within_buckets: True
+
+##随机平衡采样配置
+#bucket_dir: './buckets'
+#sample_dir: './samples'
+#bucket_multiplier: 20
+#bucket_num_max: 4
+#min_bucket_size: 10
+#reset_bucket: True
