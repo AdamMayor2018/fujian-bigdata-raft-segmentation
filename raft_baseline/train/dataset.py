@@ -24,7 +24,7 @@ class RandomBalancedSampler(Dataset):
 
         self.data_dir = self.conf_loader.attempt_load_param("train_dir")
         self.bucket_dir = self.conf_loader.attempt_load_param("buckets_path")
-        self.sample_dir = self.conf_loader.attempt_load_param("sample_dir")
+        self.sample_dir = self.conf_loader.attempt_load_param("samples_path")
         self.width = self.conf_loader.attempt_load_param("train_width")
         self.height = self.conf_loader.attempt_load_param("train_height")
 
@@ -212,6 +212,7 @@ class BucketedDataset(Dataset):
             self.data = self.create_data()
             self.buckets = self.create_buckets()
             self.buckets = self.filter_buckets()
+            self.balance_buckets()
             self.describe_buckets()
             self.save_buckets()
         else:
@@ -282,6 +283,26 @@ class BucketedDataset(Dataset):
                 bin_num += 1
 
         return buckets
+
+    def balance_buckets(self):
+        for bucket_id in self.buckets.keys():
+            data = self.buckets[bucket_id]
+            # get the mask to cover data from train_1 and data from train_0
+            mask_0 = data['image_path'].apply(lambda x: True if 'train_0' in os.path.basename(x) else False)
+            print(f'bucket {bucket_id} before balanced sample - train_0: {len(data[mask_0])} - train_1: {len(data[~mask_0])} - size: {len(data)}')
+            # count the number of data from train_1 and train_0 based on the column 'image_path'
+            train_0_count = len(data[mask_0])
+            train_1_count = len(data[~mask_0])
+            # get maximum count of train_0 and train_1
+            max_count = max(train_0_count, train_1_count)
+            # sample from train_0 and train_1 to make them have the same number of data
+            train_0_sample = data[mask_0].sample(n=max_count, replace=True)
+            train_1_sample = data[~mask_0].sample(n=max_count, replace=True)
+            # combine train_0 and train_1
+            data = pd.concat([train_0_sample, train_1_sample], axis=0, ignore_index=True)
+            # update the bucket
+            self.buckets[bucket_id] = data
+            print(f'bucket {bucket_id} after balanced sample - train_0: {len(train_0_sample)} - train_1: {len(train_1_sample)} - size: {len(data)}')
 
     def describe_buckets(self):
         feature_column = 'label_mean'
