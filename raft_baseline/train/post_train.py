@@ -8,15 +8,16 @@ import argparse
 from tqdm import tqdm
 from raft_baseline.util.common import fix_seed
 from raft_baseline.config.conf_loader import YamlConfigLoader
-from raft_baseline.train.dataset import RaftDataset, BucketedDataset
+from raft_baseline.train.dataset import RaftDataset, BucketedDataset, RaftPostDataset, BucketedPostDataset
 from raft_baseline.train.transform import AugmentationTool
 from torch.utils.data import DataLoader
 from torch import nn, optim
 import logging
 import segmentation_models_pytorch as smp
 import pandas as pd
-from torchsummary import summary
 import torchmetrics
+from torchsummary import summary
+
 
 logger = logging.getLogger('train')
 logger.setLevel("DEBUG")
@@ -48,8 +49,8 @@ def cal_np_f1_score(targets, logits):
 
 
 def my_collate(batch):
-    inputs = torch.stack([data["image"] for data in batch])
-    targets = torch.stack([data["mask"] for data in batch])
+    inputs = np.stack([data["image"] for data in batch])
+    targets = np.stack([data["mask"] for data in batch])
     return inputs, targets
 
 
@@ -58,7 +59,7 @@ if __name__ == '__main__':
     seed = 2022
     fix_seed(seed)
     # load global config
-    config = parse_command_line_args() or "../config/raft_baseline_config.yaml"
+    config = parse_command_line_args() or "../config/raft_baseline_post_config.yaml"
     conf_loader = YamlConfigLoader(yaml_path=config)
     device = conf_loader.attempt_load_param("device")
     device = device if torch.cuda.is_available() else "cpu"
@@ -66,8 +67,8 @@ if __name__ == '__main__':
     # augmentation
     aug = AugmentationTool(conf_loader)
     # dataset
-    train_dataset = BucketedDataset(conf_loader=conf_loader, mode="train", aug=aug)
-    valid_dataset = RaftDataset(conf_loader, mode="val", aug=aug)
+    train_dataset = BucketedPostDataset(conf_loader=conf_loader, mode="train", aug=aug)
+    valid_dataset = RaftPostDataset(conf_loader, mode="val", aug=aug)
     train_loader = DataLoader(train_dataset, batch_size=conf_loader.attempt_load_param("train_batch_size"),
                               shuffle=True, num_workers=4, pin_memory=True, collate_fn=my_collate, drop_last=True)
     valid_loader = DataLoader(valid_dataset, batch_size=conf_loader.attempt_load_param("val_batch_size"),
@@ -81,15 +82,15 @@ if __name__ == '__main__':
     #                     deep_supervision=model_params["deep_supervision"], clf_head=model_params["clf_head"],
     #                     clf_threshold=eval(model_params["clf_threshold"]),
     #                     load_weights=model_params["load_backbone_weights"])
-    model = smp.DeepLabV3Plus(
+    model = smp.Unet(
         encoder_name=conf_loader.attempt_load_param("backbone"),
         encoder_weights='imagenet',
-        in_channels=3,
+        in_channels=1,
         classes=1,
         activation=None
     )
-    summary(model, (3, resolution[0], resolution[1]), device="cpu")
-
+    summary(model, (1, resolution[0], resolution[1]), device="cpu")
+    train_f1_metric = torchmetrics.classification.BinaryF1Score().to(device)
 
     # load pretrained
     if conf_loader.attempt_load_param("pretrained") and conf_loader.attempt_load_param("pretrained_path"):
@@ -97,8 +98,6 @@ if __name__ == '__main__':
     model = model.to(device)
     # critirion optimizer scheduler
 
-    # criterion = nn.BCEWithLogitsLoss().to(device)
-    #criterion = dice_bce_loss_with_logits(device=device).to(device)
     criterion = smp.losses.DiceLoss(smp.losses.BINARY_MODE, from_logits=True).to(device)
     criterion2 = smp.losses.SoftBCEWithLogitsLoss().to(device)
     #criterion2 = nn.BCEWithLogitsLoss().to(device)
@@ -107,7 +106,7 @@ if __name__ == '__main__':
         if isinstance(v, str):
             optim_params[k] = eval(v)
     # optim_params = {k: eval(v) for k, v in optim_params.items() if type(v) == "str"}
-    optimizer = optim.AdamW(model.parameters(), **optim_params)
+    optimizer = optim.SGD(model.parameters(), **optim_params)
     sched_params = conf_loader.attempt_load_param("sched_params")
     for k, v in sched_params.items():
         if isinstance(v, str):
@@ -128,11 +127,10 @@ if __name__ == '__main__':
     result_dict = {}
     # train
     record_df = pd.DataFrame(columns=log_cols, dtype=object)
-    train_f1_metric = torchmetrics.classification.BinaryF1Score().to(device)
     for epoch in range(1, conf_loader.attempt_load_param("num_epochs") + 1):
-        # if epoch >= 70:
-        #     transform = aug.get_transforms_valid()
-        #     train_dataset.set_transform(transform)
+        if epoch >= 70:
+            transform = aug.get_transforms_valid()
+            train_dataset.set_transform(transform)
         # if epoch == 2:
         #     import pdb
         #     pdb.set_trace()
@@ -157,25 +155,26 @@ if __name__ == '__main__':
                 inputs = data[0]
                 targets = data[1]
                 train_batch = inputs.shape[0]
+                inputs = torch.tensor(inputs).unsqueeze(1)
+                targets = torch.tensor(targets)
                 logits = model(inputs.to(device, torch.float32, non_blocking=True))
                 y_true = targets.to(device, torch.float32, non_blocking=True)
                 # logger.info(f"{logits.shape}, {y_true.shape}")
                 logits = logits.squeeze(1)
                 #train_batch_loss = criterion(logits, y_true)
-                train_batch_loss = 0.5 * criterion(logits, y_true) + 0.5 * criterion2(logits, y_true)
+                train_batch_loss = criterion(logits, y_true) + criterion2(logits, y_true)
                 #train_batch_loss = criterion(logits, y_true)
                 ##train_batch_loss = (0.5 - epoch / num_epochs * 1/2) * criterion(logits, y_true) + (0.5 + epoch / num_epochs * 1/2) * criterion2(logits, y_true)
                 # logger.info(f"train batch : {i}, dice_loss: {0.5 * criterion(logits, y_true)}, bce_loss: {0.5 * criterion2(logits, y_true)}")
                 #logger.info(f"train batch : {i}, f1 loss: {train_batch_loss}")
-                train_batch_f1_score = train_f1_metric.update(logits, y_true)
                 train_batch_loss.backward()
                 optimizer.step()
                 optimizer.zero_grad()
                 train_epoch_loss += train_batch_loss.item() * train_batch
                 # logits = torch.sigmoid(logits).detach().cpu().numpy()
+                train_batch_f1_score = train_f1_metric.update(logits, y_true)
                 # logits[logits >= 0.5] = 1
                 # logits[logits < 0.5] = 0
-
                 # train_targets_all.extend(targets.numpy().flatten().tolist())
                 # train_logits_all.extend(logits.flatten().tolist())
                 # batch_train_f1_score = f1_score(targets.flatten().tolist(), logits.flatten().tolist())
@@ -184,8 +183,8 @@ if __name__ == '__main__':
                 # logger.info(f"batch f1 score: {batch_train_f1_score}, np f1 score:{np_train_f1_score}")
 
             avg_train_loss = train_epoch_loss / len(train_dataset)
-            # train_epoch_f1_score = sum(train_epoch_f1_scores) / len(train_epoch_f1_scores)
             train_epoch_f1_score = train_f1_metric.compute().cpu().numpy()
+            # train_epoch_f1_score = sum(train_epoch_f1_scores) / len(train_epoch_f1_scores)
             # train_epoch_f1_score = cal_np_f1_score(np.array(train_targets_all), np.array(train_logits_all))
             logger.info(f"epoch {epoch}, train loss: {avg_train_loss}, train F1_score： {train_epoch_f1_score}")
             # validation
@@ -197,13 +196,15 @@ if __name__ == '__main__':
             for i, data in enumerate(val_epoch):
                 inputs = data[0]
                 targets = data[1]
+                inputs = torch.tensor(inputs).unsqueeze(1)
+                targets = torch.tensor(targets)
                 with torch.no_grad():
                     val_batch = inputs.shape[0]
                     logits = model(inputs.to(device, torch.float32, non_blocking=True))
                     logits = logits.squeeze(1)
                     y_true = targets.to(device, torch.float32, non_blocking=True)
                     # val_batch_loss = criterion(logits.squeeze(1), y_true).item() * val_batch
-                    val_batch_loss = 0.5 * criterion(logits, y_true) + 0.5 * criterion2(logits, y_true)
+                    val_batch_loss = criterion(logits, y_true) + criterion2(logits, y_true)
                     #val_batch_loss = criterion(logits.squeeze(1), y_true).item() * val_batch
                     # logger.info(
                     #     f"val batch : {i}, dice_loss: {0.5 * criterion(logits, y_true)}, bce_loss: {0.5 * criterion2(logits, y_true)}")
