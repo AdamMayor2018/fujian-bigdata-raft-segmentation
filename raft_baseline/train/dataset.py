@@ -353,6 +353,45 @@ class BucketedDataset(Dataset):
     def set_transform(self, new_transform):
         self.transform = new_transform
 
+
+class BucketedPostDataset(BucketedDataset):
+    # 重写__getitem__方法
+    def __getitem__(self, idx):
+        # bucket_id = (idx // int(self.world_size)) % self.bucket_num
+        # print("idx:", idx, "local_rank:", os.environ['LOCAL_RANK'], "bucket_id:", bucket_id, '\n')
+        # 获取桶id
+        if idx == 0:
+            bucket_id = 0
+        else:
+            bucket_id = idx % self.bucket_num
+        # 获取桶内数据
+        samples = self.buckets[bucket_id]
+        sample_idx = np.random.choice(samples.index, size=1)[0]
+
+        img_path = samples.loc[sample_idx, 'image_path']
+        label_path = samples.loc[sample_idx, 'label_path']
+        # print(img_path, label_path)
+        img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
+        mask = cv2.imread(label_path, cv2.IMREAD_GRAYSCALE)
+        if len(img.shape) == 2:
+            h, w = img.shape
+        else:
+            h, w, c = img.shape
+        # 如果尺寸和配置不通进行缩放
+        if h != self.height or w != self.width:
+            img = cv2.resize(img, (self.width, self.height), interpolation=cv2.INTER_AREA)
+            mask = cv2.resize(mask, (self.width, self.height), interpolation=cv2.INTER_AREA)
+        # 原图给二值化的1对应其他值
+        mask[mask != 0] = 1
+        if self.conf_loader.attempt_load_param("transform") and self.transform:
+            augmented = self.transform(image=img.astype(np.uint8),
+                                       mask=mask.astype(np.uint8))
+            img = augmented['image']
+            mask = augmented['mask']
+        return {'image': img, 'mask': mask,
+                'info': 'idx:' + str(idx) + 'bucket: ' + str(bucket_id) + 'local:' + img_path}
+
+
 class RaftDataset(Dataset):
     def __init__(self, conf_loader: YamlConfigLoader, mode: str, aug:AugmentationTool):
         self.conf_loader = conf_loader
@@ -393,7 +432,57 @@ class RaftDataset(Dataset):
                                        mask=mask.astype(np.uint8))
             img = augmented['image']
             mask = augmented['mask']
-        return {'image': img, 'mask': mask}
+        # return {'image': img, 'mask': mask}
+        return {'image': img, 'mask': mask, 'image_path': img_path, 'label_path': label_path}
+
+    def __len__(self):
+        return len(self.pairs["images"])
+
+
+class RaftPostDataset(Dataset):
+    def __init__(self, conf_loader: YamlConfigLoader, mode: str, aug:AugmentationTool):
+        self.conf_loader = conf_loader
+        self.mode = mode
+        self.data_dir = conf_loader.attempt_load_param("train_dir") \
+            if self.mode == "train" else conf_loader.attempt_load_param("val_dir")
+        images = glob(opj(self.data_dir, "images", "*.png"))
+        # self.pairs = {"images:": [], "labels": []}
+        self.pairs = defaultdict(list)
+        for path in images:
+            img_name = os.path.basename(path)
+            label_path = opj(self.data_dir, "labels", img_name)
+            if os.path.exists(label_path):
+                self.pairs["images"].append(path)
+                self.pairs["labels"].append(label_path)
+        self.transform = aug.get_transforms_valid()
+        self.width = self.conf_loader.attempt_load_param("train_width") \
+            if self.mode == "train" else self.conf_loader.attempt_load_param("val_width")
+        self.height = self.conf_loader.attempt_load_param("train_height") \
+            if self.mode == "train" else self.conf_loader.attempt_load_param("val_height")
+
+    def __getitem__(self, idx):
+        img_path = self.pairs["images"][idx]
+        label_path = self.pairs["labels"][idx]
+        #print(img_path, label_path)
+        img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
+        mask = cv2.imread(label_path, cv2.IMREAD_GRAYSCALE)
+        if len(img.shape) == 2:
+            h, w = img.shape
+        else:
+            h, w, c = img.shape
+        # 如果尺寸和配置不通进行缩放
+        if h != self.height or w != self.width:
+            img = cv2.resize(img, (self.width, self.height), interpolation=cv2.INTER_AREA)
+            mask = cv2.resize(mask, (self.width, self.height), interpolation=cv2.INTER_AREA)
+        # 原图给二值化的1对应其他值
+        mask[mask != 0] = 1
+        if self.conf_loader.attempt_load_param("transform") and self.transform:
+            augmented = self.transform(image=img.astype(np.uint8),
+                                       mask=mask.astype(np.uint8))
+            img = augmented['image']
+            mask = augmented['mask']
+        # return {'image': img, 'mask': mask}
+        return {'image': img, 'mask': mask, 'image_path': img_path, 'label_path': label_path}
 
     def __len__(self):
         return len(self.pairs["images"])
