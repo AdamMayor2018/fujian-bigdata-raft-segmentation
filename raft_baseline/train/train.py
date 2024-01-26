@@ -81,9 +81,8 @@ if __name__ == '__main__':
     #                     deep_supervision=model_params["deep_supervision"], clf_head=model_params["clf_head"],
     #                     clf_threshold=eval(model_params["clf_threshold"]),
     #                     load_weights=model_params["load_backbone_weights"])
-    model = smp.PAN(
+    model = smp.DeepLabV3Plus(
         encoder_name=conf_loader.attempt_load_param("backbone"),
-        encoder_output_stride=32,
         encoder_weights='imagenet',
         in_channels=3,
         classes=1,
