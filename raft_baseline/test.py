@@ -4,11 +4,10 @@
 # @File : run.py.py
 # @Software: PyCharm
 # @Description: 按照官方要求提供的推理代码
-import glob
-
 from raft_baseline.config.conf_loader import YamlConfigLoader
 import os, sys
 import cv2
+from glob import glob
 import torch
 import segmentation_models_pytorch as smp
 import numpy as np
@@ -22,6 +21,7 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 Image.MAX_IMAGE_PIXELS = None
 from torchsummary import summary
 from sklearn.metrics import roc_curve
+from thop import profile
 
 
 
@@ -44,26 +44,31 @@ def main(to_pred_dir, result_save_path):
     aug = AugmentationTool(conf_loader)
     device = conf_loader.attempt_load_param("device")
     # model
-    model = smp.DeepLabV3Plus(
+    model = smp.PAN(
         encoder_name=conf_loader.attempt_load_param("backbone"),
         encoder_weights=None,
         in_channels=3,
         classes=1,
+        encoder_output_stride=32,
         activation=None
     )
     if conf_loader.attempt_load_param("pretrained") and conf_loader.attempt_load_param("pretrained_path"):
         try:
-            model.load_state_dict(torch.load(os.path.join(model_dir, "baseline_weights_new",  conf_loader.attempt_load_param("pretrained_path"))))
+            model.load_state_dict(torch.load(os.path.join(model_dir, "experiments/experiment_hrnet48_ssld_with_10balance_data/weights",  conf_loader.attempt_load_param("pretrained_path"))))
         except Exception as e:
             model.load_state_dict({k.replace('module.', ''): v for k, v in
-                           torch.load(os.path.join(model_dir, "baseline_weights_new",  conf_loader.attempt_load_param("pretrained_path"))).items()})
-    summary(model, input_size=(3, 512, 512), device="cpu")
+                           torch.load(os.path.join(model_dir, "experiments/experiment_hrnet48_ssld_with_10balance_data/weights",  conf_loader.attempt_load_param("pretrained_path"))).items()})
+    #summary(model, input_size=(3, 512, 512), device="cpu")
+    dummy_input = torch.randn(1, 3, 512, 512)
+    flops, params = profile(model, (dummy_input,))
+    print('flops: ', flops, 'params: ', params)
+    print('flops: %.2f M, params: %.2f M' % (flops / 1000000.0, params / 1000000.0))
     model = model.to(device)
     model.eval()
 
     # data
-
-    pred_imgs_paths = os.listdir(to_pred_dir)
+    pred_imgs_paths = glob(os.path.join(to_pred_dir, "img*.tif"))
+    #pred_imgs_paths = os.listdir(to_pred_dir)
     mean_f1_scores = []
     ratios = []
     # for ratio in range(0, 100, 1):
@@ -129,6 +134,6 @@ def main(to_pred_dir, result_save_path):
 if __name__ == "__main__":
     # to_pred_dir = sys.argv[1]  # 所需预测的文件夹路径
     # result_save_path = sys.argv[2]  # 预测结果保存文件路径
-    to_pred_dir = "/data/cx/datasets/fujian_gis_data/pred"
+    to_pred_dir = "/data/cx/datasets/fujian_gis_data/new_pred"
     result_save_path = "/data/user/zhaozeming/competition/result.tif"
     main(to_pred_dir, result_save_path)
