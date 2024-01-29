@@ -22,7 +22,7 @@ Image.MAX_IMAGE_PIXELS = None
 from torchsummary import summary
 from sklearn.metrics import roc_curve
 from thop import profile
-
+import torchmetrics
 
 
 def cut_img(logits, result_mask, padding_size, matting_size, origin_indices):
@@ -65,7 +65,7 @@ def main(to_pred_dir, result_save_path):
     print('flops: %.2f M, params: %.2f M' % (flops / 1000000.0, params / 1000000.0))
     model = model.to(device)
     model.eval()
-
+    test_f1_metric = torchmetrics.classification.BinaryF1Score().to(device)
     # data
     pred_imgs_paths = glob(os.path.join(to_pred_dir, "img*.tif"))
     #pred_imgs_paths = os.listdir(to_pred_dir)
@@ -101,20 +101,22 @@ def main(to_pred_dir, result_save_path):
             image_mask = Image.open(os.path.join(to_pred_dir, "..", f'{pred_name.replace("img", "mask")}'))
             image_mask = np.array(image_mask)
             image_mask[image_mask >= 1] = 1
+            train_batch_f1_score = test_f1_metric.update(result_mask, image_mask)
+
             # fpr, tpr, thresholds = roc_curve(image_mask.flatten(), result_mask.flatten(), pos_label=1, sample_weight=None, drop_intermediate=True)
             # plt.plot(fpr, tpr, marker='o')
             # plt.show()
             # from sklearn.metrics import auc
             # AUC = auc(fpr, tpr)
             #print(f"{pred_name} fpr: {fpr}, tpr: {tpr}, thresholds: {thresholds}, AUC:{AUC}")
-            TP = np.sum(np.logical_and(result_mask == 1, image_mask == 1))
-            FP = np.sum(np.logical_and(result_mask == 1, image_mask == 0))
-            FN = np.sum(np.logical_and(result_mask == 0, image_mask == 1))
-            precision = TP / (TP + FP)
-            recall = TP / (TP + FN)
-            f1 = 2 * precision * recall / (precision + recall)
-            print(f"{pred_name} f1: {f1}")
-            scores.append(f1)
+            # TP = np.sum(np.logical_and(result_mask == 1, image_mask == 1))
+            # FP = np.sum(np.logical_and(result_mask == 1, image_mask == 0))
+            # FN = np.sum(np.logical_and(result_mask == 0, image_mask == 1))
+            # precision = TP / (TP + FP)
+            # recall = TP / (TP + FN)
+            # f1 = 2 * precision * recall / (precision + recall)
+            print(f"{pred_name} f1: {train_batch_f1_score}")
+            #scores.append(f1)
             plt.subplot(1, 2, 1)
             plt.imshow(result_mask)
             plt.subplot(1, 2, 2)
