@@ -54,13 +54,34 @@ def main(to_pred_dir, result_save_path):
     )
     if conf_loader.attempt_load_param("pretrained") and conf_loader.attempt_load_param("pretrained_path"):
         try:
-            model.load_state_dict(torch.load(os.path.join(model_dir, "baseline_weights_new",  conf_loader.attempt_load_param("pretrained_path"))))
+            model.load_state_dict(torch.load(os.path.join(model_dir, "experiments/experiment_resnext50_dice_lovaz_loss/weights",  conf_loader.attempt_load_param("pretrained_path"))))
         except Exception as e:
             model.load_state_dict({k.replace('module.', ''): v for k, v in
-                           torch.load(os.path.join(model_dir, "baseline_weights_new",  conf_loader.attempt_load_param("pretrained_path"))).items()})
+                           torch.load(os.path.join(model_dir, "experiments/experiment_resnext50_dice_lovaz_loss/weights",  conf_loader.attempt_load_param("pretrained_path"))).items()})
     summary(model, input_size=(3, 512, 512), device="cpu")
     model = model.to(device)
     model.eval()
+
+    model2 = smp.DeepLabV3Plus(
+        encoder_name=conf_loader.attempt_load_param("backbone"),
+        encoder_weights=None,
+        in_channels=3,
+        classes=1,
+        activation=None
+    )
+
+    if conf_loader.attempt_load_param("pretrained") and conf_loader.attempt_load_param("model2_pretrained_path"):
+        try:
+            model2.load_state_dict(torch.load(os.path.join(model_dir, "baseline_weights_new",
+                                                           conf_loader.attempt_load_param("model2_pretrained_path"))))
+        except Exception as e:
+            model2.load_state_dict({k.replace('module.', ''): v for k, v in
+                                    torch.load(os.path.join(model_dir, "baseline_weights_new",
+                                                            conf_loader.attempt_load_param(
+                                                                "model2_pretrained_path"))).items()})
+    summary(model2, input_size=(3, 512, 512), device="cpu")
+    model2 = model2.to(device)
+    model2.eval()
 
     # data
 
@@ -76,8 +97,8 @@ def main(to_pred_dir, result_save_path):
         pred_img_path = os.path.join(to_pred_dir, pred_name)
         image = Image.open(pred_img_path)
         image = np.array(image)
-        height, width , _ = image.shape
-        result_mask = np.zeros((height, width), dtype=np.float32)  # ! 结果mask
+        height, width, _ = image.shape
+        result_mask = np.zeros((height, width), dtype=np.uint8)  # ! 结果mask
         dataset = RaftInferExpansionDataset(file_path=pred_img_path, conf_loader=conf_loader, aug=aug)
         with torch.no_grad():
             for i in tqdm(range(len(dataset)), total=int(len(dataset))):
@@ -86,52 +107,53 @@ def main(to_pred_dir, result_save_path):
                 crop_image = crop_image.unsqueeze(0)
                 logits = model.predict(crop_image)
                 logits = torch.sigmoid(logits)
-                # logits[logits >= ratio] = 1
-                # logits[logits < ratio] = 0
-                logits = logits.squeeze(0).squeeze(0).cpu().detach().numpy()
-                #logits = logits.squeeze(0).squeeze(0).cpu().detach().numpy()
+                logits2 = model2.predict(crop_image)
+                logits2 = torch.sigmoid(logits2)
+                logits = 0.5 * logits + 0.5 * logits2
+                logits[logits >= ratio] = 1
+                logits[logits < ratio] = 0
+                logits = logits.squeeze(0).squeeze(0).cpu().detach().numpy().astype(np.uint8)
+
+                # logits = logits.squeeze(0).squeeze(0).cpu().detach().numpy()
                 result_mask = cut_img(logits, result_mask, dataset.pad_size, dataset.matting_size, origin_indices)
-
+            # 开运算
+            result_mask = result_mask.astype(np.uint8)
             # 找到轮廓
-            result_mask_binary = copy.deepcopy(result_mask)
-            result_mask_binary[result_mask_binary >= ratio] = 1
-            result_mask_binary[result_mask_binary < ratio] = 0
-            result_mask_binary = result_mask_binary.astype(np.uint8)
-            num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(result_mask_binary, connectivity=8)
-
-            # 查看各个返回值
-            # 连通域数量
-            print('num_labels = ', num_labels)
-            # 连通域的信息：对应各个轮廓的x、y、width、height和面积
-            print('stats = ', stats)
-            # 连通域的中心点
-            print('centroids = ', centroids)
-            # 每一个像素的标签1、2、3.。。，同一个连通域的标签是一致的
-
-            for i in range(1, num_labels):
-                mask = labels == i
-                print(i, " prob avg:", result_mask[mask].sum() / result_mask[mask].size, "mask size: ", result_mask[mask].size)
-                #填平平均置信度低的label都改为0
-                if result_mask[mask].sum() / result_mask[mask].size < 0.8:
-                    result_mask[mask] = 0
-                # 挖去小点
-                if result_mask[mask].size < 100:
-                    result_mask[mask] = 0
-            result_mask[result_mask >= ratio] = 1
-            result_mask[result_mask < ratio] = 0
-
-            #填上小洞
-            reverse_result_mask = 1 - result_mask
-            reverse_result_mask = reverse_result_mask.astype(np.uint8)
-            num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(reverse_result_mask,
-                                                                                    connectivity=8)
-            for i in range(1, num_labels):
-                mask = labels == i
-                # 填上小洞
-                if reverse_result_mask[mask].size < 200:
-                    reverse_result_mask[mask] = 0
-            final_result_mask = 1 - reverse_result_mask
-
+            # num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(result_mask, connectivity=8)
+            #
+            # # 查看各个返回值
+            # # 连通域数量
+            # print('num_labels = ', num_labels)
+            # # 连通域的信息：对应各个轮廓的x、y、width、height和面积
+            # print('stats = ', stats)
+            # # 连通域的中心点
+            # print('centroids = ', centroids)
+            # # 每一个像素的标签1、2、3.。。，同一个连通域的标签是一致的
+            #
+            # for i in range(1, num_labels):
+            #     mask = labels == i
+            #     # print(i, " prob avg:", result_mask[mask].sum() / result_mask[mask].size, "mask size: ", result_mask[mask].size)
+            #     # #填平平均置信度低的label都改为0
+            #     # if result_mask[mask].sum() / result_mask[mask].size < 0.8:
+            #     #     result_mask[mask] = 0
+            #     # 挖去小点
+            #     if result_mask[mask].size < 100:
+            #         result_mask[mask] = 0
+            # # result_mask[result_mask >= ratio] = 1
+            # # result_mask[result_mask < ratio] = 0
+            #
+            # #填上小洞
+            # reverse_result_mask = 1 - result_mask
+            # reverse_result_mask = reverse_result_mask.astype(np.uint8)
+            # num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(reverse_result_mask,
+            #                                                                         connectivity=8)
+            # for i in range(1, num_labels):
+            #     mask = labels == i
+            #     # 填上小洞
+            #     if reverse_result_mask[mask].size < 200:
+            #         reverse_result_mask[mask] = 0
+            # final_result_mask = 1 - reverse_result_mask
+            #
             image_mask = Image.open(os.path.join(to_pred_dir, "..", f'{pred_name.replace("img", "mask")}'))
             image_mask = np.array(image_mask)
             image_mask[image_mask >= 1] = 1
@@ -141,6 +163,7 @@ def main(to_pred_dir, result_save_path):
             # from sklearn.metrics import auc
             # AUC = auc(fpr, tpr)
             #print(f"{pred_name} fpr: {fpr}, tpr: {tpr}, thresholds: {thresholds}, AUC:{AUC}")
+            final_result_mask = result_mask
             TP = np.sum(np.logical_and(final_result_mask == 1, image_mask == 1))
             FP = np.sum(np.logical_and(final_result_mask == 1, image_mask == 0))
             FN = np.sum(np.logical_and(final_result_mask == 0, image_mask == 1))

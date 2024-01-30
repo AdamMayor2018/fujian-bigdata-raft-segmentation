@@ -90,7 +90,7 @@ class RaftTileDataset(Dataset):
         if os.path.exists(filename):
             path = filename
         else:
-            path = opj(self.conf_loader.attempt_load_param("raw_train_dir"), filename + '.tiff')
+            path = opj(self.conf_loader.attempt_load_param("raw_train_dir"), filename + '.tif')
         mask_path = path.replace("img", "mask")
         self.image = rasterio.open(path)
         self.mask = rasterio.open(mask_path)
@@ -171,8 +171,8 @@ if __name__ == '__main__':
     val_dir = conf_loader.attempt_load_param("val_dir")
     copy_and_paste = conf_loader.attempt_load_param("copy_and_paste")
     copy_and_paste_prob = conf_loader.attempt_load_param("copy_and_paste_prob")
-    train_raw_img_paths = glob.glob(opj(raw_train_dir, "train_img*.tif"))
-    val_raw_img_paths = glob.glob(opj(raw_val_dir, "val_img*.tif"))
+    train_raw_img_paths = glob.glob(opj(raw_train_dir, "img*.tif"))
+    val_raw_img_paths = glob.glob(opj(raw_val_dir, "img*.tif"))
     print(train_raw_img_paths)
     masked_imgs = []
     background_imgs = []
