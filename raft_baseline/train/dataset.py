@@ -1,4 +1,6 @@
 # 训练数据处理
+import copy
+
 import numpy as np
 from collections import defaultdict
 import os
@@ -568,10 +570,11 @@ class RaftInferExpansionDataset(Dataset):
         # self.result_blank = draw_box(self.result_blank, cords=(orgin_xmin, orgin_ymin, orgin_xmax, orgin_ymax), color=(0, 255, 0),
         #                       thickness=3)
         # origin crop idx
+        origin_image = copy.deepcopy(crop_image)
         if self.transform:
             crop_image = self.transform(image=crop_image)["image"]
 
-        return crop_image,  [pad_xmin, pad_ymin, pad_xmax, pad_ymax], [orgin_xmin, orgin_ymin, orgin_xmax, orgin_ymax]
+        return origin_image, crop_image,  [pad_xmin, pad_ymin, pad_xmax, pad_ymax], [orgin_xmin, orgin_ymin, orgin_xmax, orgin_ymax]
 
 
 if __name__ == '__main__':
