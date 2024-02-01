@@ -460,6 +460,28 @@ class RaftDataset(Dataset):
         return len(self.pairs["images"])
 
 
+class RaftCheckDataset(RaftDataset):
+    def __init__(self, conf_loader: YamlConfigLoader, mode: str, aug:AugmentationTool):
+        super(RaftCheckDataset, self).__init__(conf_loader, mode, aug)
+        self.conf_loader = conf_loader
+        self.mode = mode
+        self.data_dir = conf_loader.attempt_load_param("train_dir")
+        images = glob(opj(self.data_dir, "images", "*.png"))
+        # self.pairs = {"images:": [], "labels": []}
+        self.pairs = defaultdict(list)
+        for path in images:
+            img_name = os.path.basename(path)
+            label_path = opj(self.data_dir, "labels", img_name)
+            if os.path.exists(label_path):
+                self.pairs["images"].append(path)
+                self.pairs["labels"].append(label_path)
+        self.transform = aug.get_transforms_valid()
+        self.width = self.conf_loader.attempt_load_param("train_width") \
+            if self.mode == "train" else self.conf_loader.attempt_load_param("val_width")
+        self.height = self.conf_loader.attempt_load_param("train_height") \
+            if self.mode == "train" else self.conf_loader.attempt_load_param("val_height")
+
+
 class RaftPostDataset(Dataset):
     def __init__(self, conf_loader: YamlConfigLoader, mode: str, aug:AugmentationTool):
         self.conf_loader = conf_loader
