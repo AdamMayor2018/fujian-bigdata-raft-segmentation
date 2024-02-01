@@ -49,6 +49,7 @@ def main(to_pred_dir, result_save_path):
     classify_transform = timm.data.create_transform(
     **timm.data.resolve_data_config(classfify_model.pretrained_cfg))
     classfify_model = classfify_model.to(device)
+    classfify_model.eval()
     # model
     model = smp.PAN(
         encoder_name=conf_loader.attempt_load_param("backbone"),
@@ -100,12 +101,15 @@ def main(to_pred_dir, result_save_path):
                 classify_prob = classfify_model(classify_image.unsqueeze(0).to(device))
                 probabilities = torch.nn.functional.softmax(classify_prob[0], dim=0)
                 print(probabilities)
+
                 logits = model.predict(crop_image)
                 logits = torch.sigmoid(logits)
                 logits[logits >= ratio] = 1
                 logits[logits < ratio] = 0
                 logits = logits.squeeze(0).squeeze(0).cpu().detach().numpy().astype(np.uint8)
                 #logits = logits.squeeze(0).squeeze(0).cpu().detach().numpy()
+                if probabilities[0] > 0.7:
+                    logits = np.zeros_like(logits)
                 result_mask = cut_img(logits, result_mask, dataset.pad_size, dataset.matting_size, origin_indices)
             # 开运算
             #result_mask = cv2.dilate(result_mask, kernel=(3, 3), iterations=2)
