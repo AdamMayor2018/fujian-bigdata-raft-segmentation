@@ -23,6 +23,7 @@ from torchsummary import summary
 from sklearn.metrics import roc_curve
 from thop import profile
 import torchmetrics
+import timm
 
 
 def cut_img(logits, result_mask, padding_size, matting_size, origin_indices):
@@ -43,6 +44,12 @@ def main(to_pred_dir, result_save_path):
     ratio = conf_loader.attempt_load_param("ratio")
     aug = AugmentationTool(conf_loader)
     device = conf_loader.attempt_load_param("device")
+
+    classfify_model = timm.create_model('efficientnet_b2', pretrained=False, num_classes=2, checkpoint_path="/data/cx/ysp/pytorch-image-models/output/train/20240131-220328-efficientnet_b2-512/model_best.pth.tar")
+    classify_transform = timm.data.create_transform(
+    **timm.data.resolve_data_config(classfify_model.pretrained_cfg))
+    classfify_model = classfify_model.to(device)
+    classfify_model.eval()
     # model
     model = smp.PAN(
         encoder_name=conf_loader.attempt_load_param("backbone"),
@@ -54,10 +61,10 @@ def main(to_pred_dir, result_save_path):
     )
     if conf_loader.attempt_load_param("pretrained") and conf_loader.attempt_load_param("pretrained_path"):
         try:
-            model.load_state_dict(torch.load(os.path.join(model_dir, "experiments/experiment_hrnet48_ssld_with_10balance_data/weights",  conf_loader.attempt_load_param("pretrained_path"))))
+            model.load_state_dict(torch.load(os.path.join(model_dir,  conf_loader.attempt_load_param("pretrained_path"))))
         except Exception as e:
             model.load_state_dict({k.replace('module.', ''): v for k, v in
-                           torch.load(os.path.join(model_dir, "experiments/experiment_hrnet48_ssld_with_10balance_data/weights",  conf_loader.attempt_load_param("pretrained_path"))).items()})
+                           torch.load(os.path.join(model_dir,  conf_loader.attempt_load_param("pretrained_path"))).items()})
     #summary(model, input_size=(3, 512, 512), device="cpu")
     dummy_input = torch.randn(1, 3, 512, 512)
     flops, params = profile(model, (dummy_input,))
@@ -76,6 +83,8 @@ def main(to_pred_dir, result_save_path):
     #     ratio = ratio / 100
     #     ratios.append(ratio)
     scores = []
+    total_pos = []
+    total_size = []
     for pred_name in pred_imgs_paths:
         pred_img_path = os.path.join(to_pred_dir, pred_name)
         image = Image.open(pred_img_path)
@@ -85,15 +94,26 @@ def main(to_pred_dir, result_save_path):
         dataset = RaftInferExpansionDataset(file_path=pred_img_path, conf_loader=conf_loader, aug=aug)
         with torch.no_grad():
             for i in tqdm(range(len(dataset)), total=int(len(dataset))):
-                crop_image, pad_indices, origin_indices = dataset[i]
+                origin_image, crop_image, pad_indices, origin_indices = dataset[i]
                 crop_image = crop_image.to(device)
                 crop_image = crop_image.unsqueeze(0)
+                classify_image = classify_transform(Image.fromarray(origin_image))
+                classify_prob = classfify_model(classify_image.unsqueeze(0).to(device))
+                probabilities = torch.nn.functional.softmax(classify_prob[0], dim=0)
+                #print(probabilities)
+
                 logits = model.predict(crop_image)
                 logits = torch.sigmoid(logits)
                 logits[logits >= ratio] = 1
                 logits[logits < ratio] = 0
                 logits = logits.squeeze(0).squeeze(0).cpu().detach().numpy().astype(np.uint8)
                 #logits = logits.squeeze(0).squeeze(0).cpu().detach().numpy()
+                if probabilities[0] > 0.97:
+                    print(f"detect background. prob: {probabilities}")
+                    plt.imshow(origin_image)
+                    plt.title(f"{probabilities}")
+                    plt.show()
+                    logits = np.zeros_like(logits)
                 result_mask = cut_img(logits, result_mask, dataset.pad_size, dataset.matting_size, origin_indices)
             # 开运算
             #result_mask = cv2.dilate(result_mask, kernel=(3, 3), iterations=2)
@@ -101,8 +121,13 @@ def main(to_pred_dir, result_save_path):
             image_mask = Image.open(os.path.join(to_pred_dir, "..", f'{pred_name.replace("img", "mask")}'))
             image_mask = np.array(image_mask)
             image_mask[image_mask >= 1] = 1
-            train_batch_f1_score = test_f1_metric.update(result_mask, image_mask)
 
+            result_mask = result_mask.astype(np.float32)
+            image_mask = image_mask.astype(np.float32)
+            test_f1_per_image_score = test_f1_metric.update(torch.from_numpy(result_mask), torch.from_numpy(image_mask))
+            num_pos = result_mask[result_mask >= ratio].sum()
+            total_pos.append(num_pos)
+            total_size.append(result_mask.size)
             # fpr, tpr, thresholds = roc_curve(image_mask.flatten(), result_mask.flatten(), pos_label=1, sample_weight=None, drop_intermediate=True)
             # plt.plot(fpr, tpr, marker='o')
             # plt.show()
@@ -115,16 +140,19 @@ def main(to_pred_dir, result_save_path):
             # precision = TP / (TP + FP)
             # recall = TP / (TP + FN)
             # f1 = 2 * precision * recall / (precision + recall)
-            print(f"{pred_name} f1: {train_batch_f1_score}")
+            print(f"{pred_name} f1: {test_f1_per_image_score}")
             #scores.append(f1)
             plt.subplot(1, 2, 1)
             plt.imshow(result_mask)
             plt.subplot(1, 2, 2)
             plt.imshow(image_mask)
             plt.show()
-    mean_f1 = np.mean(scores)
-    mean_f1_scores.append(mean_f1)
-    print(f"ratio : {ratio}, mean f1: {mean_f1}")
+    # mean_f1 = np.mean(scores)
+    # mean_f1_scores.append(mean_f1)
+    test_f1_score = test_f1_metric.compute().cpu().numpy()
+    tp, fp, tn, fn = test_f1_metric._final_state()
+    print(tp, fp, tn, fn)
+    print(f"ratio : {ratio}, mean f1: {test_f1_score}, pos_ratio:{np.array(total_pos).sum() / np.array(total_size).sum()}")
 
     # plt.plot(ratios, mean_f1_scores, marker='o')
     # plt.show()

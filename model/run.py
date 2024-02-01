@@ -36,11 +36,12 @@ def main(to_pred_dir, result_save_path):
     ratio = conf_loader.attempt_load_param("ratio")
     aug = AugmentationTool(conf_loader)
     # model
-    model = smp.DeepLabV3Plus(
+    model = smp.PAN(
         encoder_name=conf_loader.attempt_load_param("backbone"),
         encoder_weights=None,
         in_channels=3,
         classes=1,
+        encoder_output_stride=32,
         activation=None
     )
     if conf_loader.attempt_load_param("pretrained") and conf_loader.attempt_load_param("pretrained_path"):
