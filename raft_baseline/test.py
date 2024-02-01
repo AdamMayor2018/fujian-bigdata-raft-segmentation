@@ -61,10 +61,10 @@ def main(to_pred_dir, result_save_path):
     )
     if conf_loader.attempt_load_param("pretrained") and conf_loader.attempt_load_param("pretrained_path"):
         try:
-            model.load_state_dict(torch.load(os.path.join(model_dir,"experiments/experiment_hrnet48_ssld_with_10balance_data/weights",  conf_loader.attempt_load_param("pretrained_path"))))
+            model.load_state_dict(torch.load(os.path.join(model_dir,  conf_loader.attempt_load_param("pretrained_path"))))
         except Exception as e:
             model.load_state_dict({k.replace('module.', ''): v for k, v in
-                           torch.load(os.path.join(model_dir, "experiments/experiment_hrnet48_ssld_with_10balance_data/weights", conf_loader.attempt_load_param("pretrained_path"))).items()})
+                           torch.load(os.path.join(model_dir,  conf_loader.attempt_load_param("pretrained_path"))).items()})
     #summary(model, input_size=(3, 512, 512), device="cpu")
     dummy_input = torch.randn(1, 3, 512, 512)
     flops, params = profile(model, (dummy_input,))
@@ -100,7 +100,7 @@ def main(to_pred_dir, result_save_path):
                 classify_image = classify_transform(Image.fromarray(origin_image))
                 classify_prob = classfify_model(classify_image.unsqueeze(0).to(device))
                 probabilities = torch.nn.functional.softmax(classify_prob[0], dim=0)
-                print(probabilities)
+                #print(probabilities)
 
                 logits = model.predict(crop_image)
                 logits = torch.sigmoid(logits)
@@ -108,7 +108,11 @@ def main(to_pred_dir, result_save_path):
                 logits[logits < ratio] = 0
                 logits = logits.squeeze(0).squeeze(0).cpu().detach().numpy().astype(np.uint8)
                 #logits = logits.squeeze(0).squeeze(0).cpu().detach().numpy()
-                if probabilities[0] > 0.7:
+                if probabilities[0] > 0.97:
+                    print(f"detect background. prob: {probabilities}")
+                    plt.imshow(origin_image)
+                    plt.title(f"{probabilities}")
+                    plt.show()
                     logits = np.zeros_like(logits)
                 result_mask = cut_img(logits, result_mask, dataset.pad_size, dataset.matting_size, origin_indices)
             # 开运算
