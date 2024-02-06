@@ -221,8 +221,8 @@ class BucketedDataset(Dataset):
             self.buckets = self.read_buckets()
 
         if self.shuffle_within_buckets:
-            for samples in self.buckets.values():
-                samples.sample(frac=1, random_state=self.bucket_random_seed)
+            for bucket_id, samples in self.buckets.items():
+                self.buckets[bucket_id] = self.buckets[bucket_id].sample(frac=1, random_state=self.bucket_random_seed).reset_index(drop=True)
 
         self.bucket_num = len(self.buckets)
         self.bucket_size = self.get_bucket_size()
@@ -276,6 +276,7 @@ class BucketedDataset(Dataset):
         return bucketed_data
 
     def filter_buckets(self):
+        invalid_buckets = []
         buckets = {}
         bin_num = 0
 
@@ -283,6 +284,19 @@ class BucketedDataset(Dataset):
             if len(v) >= self.min_bucket_size:
                 buckets[bin_num] = v
                 bin_num += 1
+            else:
+                invalid_buckets.append(v)
+
+        if invalid_buckets:
+            print(f'Invalid buckets: {len(invalid_buckets)}')
+            print(f'Invalid buckets size: {[len(bucket) for bucket in invalid_buckets]}')
+
+        # concat invalid buckets to the last bucket
+        if invalid_buckets:
+            invalid_data = pd.concat(invalid_buckets, axis=0, ignore_index=True)
+            last_bucket_data = buckets[bin_num - 1]
+            buckets[bin_num - 1] = pd.concat([last_bucket_data, invalid_data], axis=0, ignore_index=True)
+            print(f'Invalid buckets are concatenated to the last bucket')
 
         return buckets
 
